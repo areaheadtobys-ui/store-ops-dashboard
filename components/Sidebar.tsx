@@ -16,7 +16,7 @@ const NAV = [
   { href: "/compliance", label: "Store Compliance", icon: ClipboardCheck },
   { href: "/sop-library", label: "SOP Library", icon: BookOpen },
   { href: "/policies", label: "Policies", icon: FileText },
-  { href: "/examination", label: "Examination", icon: HelpCircle },
+  { href: "/exams", label: "Examination", icon: HelpCircle },
   { href: "/certificates", label: "Certificates", icon: Award },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/users", label: "Users", icon: Users, adminOnly: true },
