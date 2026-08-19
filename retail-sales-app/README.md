@@ -5,6 +5,11 @@ independent datasets — **Company Owned Stores** and **Franchise Stores**. Reac
 (Vite) frontend, Node/Express + SQLite backend. All data is stored locally in a
 SQLite file; nothing leaves your machine, and there's no login/auth by design.
 
+**Requires Node.js 22.5 or newer** (uses Node's built-in `node:sqlite` — no
+native compiler/build tools needed to install, unlike most SQLite packages).
+Check with `node --version`; get the latest from [nodejs.org](https://nodejs.org)
+if you're below that.
+
 ## Project layout
 
 ```
@@ -68,6 +73,10 @@ Add a store (name + optional code), deactivate a closed store (keeps its sales h
 ## Known limitation
 
 A security advisory exists against the `xlsx` (SheetJS) npm package with no upstream npm fix — SheetJS only publishes patched builds via their own CDN (`cdn.sheetjs.com`), which wasn't reachable from the environment this app was built in. Since this app only ever parses files you upload yourself on your own machine, the risk is low, but if you want the patched build: `npm install https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz` inside `server/`.
+
+## Troubleshooting
+
+**`npm install` fails with `gyp ERR! find Python` or asks for a C++ compiler**: you're on an old copy of this app that used `better-sqlite3`, which needs a native build toolchain on Windows. Pull the latest version — it now uses Node's built-in SQLite support and needs nothing beyond Node.js itself.
 
 ## Non-goals (by design, v1)
 
