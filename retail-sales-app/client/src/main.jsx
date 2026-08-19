@@ -4,13 +4,19 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App.jsx';
 import { DatasetProvider } from './context/DatasetContext.jsx';
+import { AuthProvider } from './context/AuthContext.jsx';
+import LoginGate from './components/LoginGate.jsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <DatasetProvider>
-        <App />
-      </DatasetProvider>
+      <AuthProvider>
+        <LoginGate>
+          <DatasetProvider>
+            <App />
+          </DatasetProvider>
+        </LoginGate>
+      </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
 );

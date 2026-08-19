@@ -7,5 +7,8 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:4000',
     },
+    // Allows access via a tunnel (e.g. ngrok/cloudflared), which forwards a
+    // public hostname Vite would otherwise reject as an unrecognized Host header.
+    allowedHosts: true,
   },
 })

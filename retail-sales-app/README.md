@@ -1,9 +1,11 @@
 # Retail Sales Analysis App
 
-A local, single-user web app for analyzing monthly retail sales data across two
+A local web app for analyzing monthly retail sales data across two
 independent datasets — **Company Owned Stores** and **Franchise Stores**. React
 (Vite) frontend, Node/Express + SQLite backend. All data is stored locally in a
-SQLite file; nothing leaves your machine, and there's no login/auth by design.
+SQLite file; nothing leaves your machine unless you explicitly share it (see
+"Sharing with other users" below). The app is gated by a single shared
+password — the first person to open it sets that password.
 
 **Requires Node.js 22.5 or newer** (uses Node's built-in `node:sqlite` — no
 native compiler/build tools needed to install, unlike most SQLite packages).
@@ -36,7 +38,22 @@ cd retail-sales-app/client
 npm install
 npm run dev
 ```
-Open http://localhost:5173 — the Vite dev server proxies `/api/*` to the backend, so no extra config is needed.
+Open http://localhost:5173 — the Vite dev server proxies `/api/*` to the backend, so no extra config is needed. The very first visit asks you to **set a shared password** — anyone else who accesses the app (locally or via a tunnel, see below) uses that same password to sign in. Change it any time from Settings.
+
+## Sharing with other users over the internet
+
+Your computer isn't a public web server by default, so `localhost:5173` only works on your own machine unless you expose it. The quickest way, with no account signup required, is a [Cloudflare Quick Tunnel](https://developers.cloudflare.com/pages/how-to/preview-with-cloudflare-tunnel/):
+
+1. Install `cloudflared` ([download page](https://github.com/cloudflare/cloudflared/releases) — Windows: grab `cloudflared-windows-amd64.exe`, rename it to `cloudflared.exe` for convenience).
+2. With both `npm run dev` servers already running (server + client, as above), run in a **third** terminal:
+   ```bash
+   cloudflared tunnel --url http://localhost:5173
+   ```
+3. It prints a random public URL like `https://random-words-here.trycloudflare.com` — share that link with the people who need access. It only works while this command and both `npm run dev` processes keep running on your machine.
+
+Anyone opening that link will be asked to sign in with the shared password you set. This is fine for occasional/small-team use; for something that needs to be reachable any time independent of your computer being on, you'd want to deploy the app to an always-on host instead (e.g. Render, Railway, Fly.io) — a bigger step that isn't set up here.
+
+Since everyone shares one password and one dataset, there's no per-user audit trail of who changed what — keep that in mind for anything sensitive.
 
 ## Feature tour / what to test
 
@@ -80,5 +97,5 @@ A security advisory exists against the `xlsx` (SheetJS) npm package with no upst
 
 ## Non-goals (by design, v1)
 
-- No multi-user login/auth — single user, local use only.
+- No per-user accounts — everyone shares one password and one view of the data, no individual login/audit trail.
 - No cloud sync — the SQLite file on your machine is the only copy. Back it up (`server/data/retail-sales.db`) if that matters to you.
