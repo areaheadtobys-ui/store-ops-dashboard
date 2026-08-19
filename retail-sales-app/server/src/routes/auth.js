@@ -25,11 +25,12 @@ function hashPassword(password, salt) {
   return crypto.scryptSync(password, salt, 64).toString('hex');
 }
 
-function createSession(res) {
+function createSession(req, res) {
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   db.prepare('INSERT INTO sessions (token, expires_at) VALUES (?, ?)').run(token, expiresAt);
-  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_DAYS * 24 * 60 * 60}`);
+  const secure = req.secure ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_DAYS * 24 * 60 * 60}${secure}`);
 }
 
 export function isAuthenticated(req) {
@@ -63,7 +64,7 @@ router.post('/setup', (req, res) => {
   const hash = hashPassword(password, salt);
   db.prepare('INSERT INTO app_auth (id, password_hash, salt) VALUES (1, ?, ?)').run(hash, salt);
 
-  createSession(res);
+  createSession(req, res);
   res.json({ ok: true });
 });
 
@@ -76,7 +77,7 @@ router.post('/login', (req, res) => {
   const valid = crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(auth.password_hash));
   if (!valid) return res.status(401).json({ error: 'Incorrect password' });
 
-  createSession(res);
+  createSession(req, res);
   res.json({ ok: true });
 });
 
@@ -103,7 +104,7 @@ router.post('/change-password', (req, res) => {
   const hash = hashPassword(newPassword, salt);
   db.prepare('UPDATE app_auth SET password_hash = ?, salt = ?, updated_at = datetime(\'now\') WHERE id = 1').run(hash, salt);
   db.prepare('DELETE FROM sessions').run();
-  createSession(res);
+  createSession(req, res);
   res.json({ ok: true });
 });
 
