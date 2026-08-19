@@ -76,6 +76,17 @@ export default function UploadPage() {
     }));
   }
 
+  async function deleteImport(importRow) {
+    if (!confirm(`Remove the data from "${importRow.filename}" (uploaded ${importRow.uploaded_at})? This only removes rows that haven't since been corrected by a later upload.`)) return;
+    try {
+      const res = await api.del(`/imports/${importRow.id}`);
+      loadHistory();
+      alert(`Removed ${res.rowsRemoved} row${res.rowsRemoved === 1 ? '' : 's'}.`);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function confirmImport() {
     setBusy(true);
     setError('');
@@ -122,22 +133,26 @@ export default function UploadPage() {
         {history.length === 0 ? (
           <p className="text-muted">No imports yet for this dataset.</p>
         ) : (
-          <table>
-            <thead>
-              <tr><th>File</th><th>Uploaded</th><th>Added</th><th>Updated</th><th>Failed</th></tr>
-            </thead>
-            <tbody>
-              {history.map((h) => (
-                <tr key={h.id}>
-                  <td>{h.filename}</td>
-                  <td>{h.uploaded_at}</td>
-                  <td>{h.rows_added}</td>
-                  <td>{h.rows_updated}</td>
-                  <td>{h.rows_failed > 0 ? <span className="pill bad">{h.rows_failed}</span> : 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <>
+            <p className="text-muted">Uploaded the wrong file? Remove it below — this deletes the rows it added, unless a later upload already corrected them.</p>
+            <table>
+              <thead>
+                <tr><th>File</th><th>Uploaded</th><th>Added</th><th>Updated</th><th>Failed</th><th></th></tr>
+              </thead>
+              <tbody>
+                {history.map((h) => (
+                  <tr key={h.id}>
+                    <td>{h.filename}</td>
+                    <td>{h.uploaded_at}</td>
+                    <td>{h.rows_added}</td>
+                    <td>{h.rows_updated}</td>
+                    <td>{h.rows_failed > 0 ? <span className="pill bad">{h.rows_failed}</span> : 0}</td>
+                    <td><button className="btn danger" onClick={() => deleteImport(h)}>Delete</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     </div>
