@@ -102,4 +102,16 @@ router.get('/', (req, res) => {
   res.json(imports.map((i) => ({ ...i, errors: JSON.parse(i.errors_json || '[]') })));
 });
 
+router.delete('/:id', (req, res) => {
+  const importRow = db.prepare('SELECT * FROM imports WHERE id = ?').get(req.params.id);
+  if (!importRow) return res.status(404).json({ error: 'Import not found' });
+
+  // Only removes rows still attributed to this import — if a later upload already
+  // corrected a row, it now belongs to that later import and is left alone.
+  const removed = db.prepare('DELETE FROM sales_records WHERE import_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM imports WHERE id = ?').run(req.params.id);
+
+  res.json({ deleted: true, rowsRemoved: removed.changes });
+});
+
 export default router;

@@ -48,7 +48,7 @@ Open http://localhost:5173 — the Vite dev server proxies `/api/*` to the backe
 3. **Import data** → an **Import complete** summary: rows added, rows updated, rows that failed and why, and how many stores were auto-created from names in the sheet.
 4. **Re-upload the same month** — rows are updated in place (matched on store + year + month), never duplicated.
 5. Next time you upload with the same column headers, your mapping is remembered automatically ("Using remembered mapping" badge); a changed layout prompts you to re-map.
-6. **Recent imports** at the bottom is a running log per dataset.
+6. **Recent imports** at the bottom is a running log per dataset. If you uploaded the wrong file, click **Delete** next to it — this removes the rows it added, unless a later upload already corrected them (those stay, since they belong to the newer import now).
 
 ### Dashboard
 Totals, Sales by Store, and Sales by Month, filterable by Store / Year / Month. Filters carry over as you move between Dashboard, Sales Trend, and the comparison pages.
