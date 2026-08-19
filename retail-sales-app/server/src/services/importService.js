@@ -126,7 +126,7 @@ export function performImport({ dataset, filename, headers, rows, mapping }) {
   const importInfo = importRow.run(dataset, filename);
   const importId = importInfo.lastInsertRowid;
 
-  const runAll = db.transaction(() => {
+  const runAll = () => {
     rows.forEach((row, index) => {
       try {
         let storeName = null;
@@ -181,9 +181,16 @@ export function performImport({ dataset, filename, headers, rows, mapping }) {
 
     db.prepare('UPDATE imports SET rows_added = ?, rows_updated = ?, rows_failed = ?, errors_json = ? WHERE id = ?')
       .run(rowsAdded, rowsUpdated, failures.length, JSON.stringify(failures), importId);
-  });
+  };
 
-  runAll();
+  db.exec('BEGIN');
+  try {
+    runAll();
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
 
   return {
     importId,
