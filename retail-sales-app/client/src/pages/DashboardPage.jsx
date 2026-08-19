@@ -3,12 +3,14 @@ import { useDataset } from '../context/DatasetContext.jsx';
 import { useFilters, buildQuery } from '../context/FiltersContext.jsx';
 import FiltersBar, { MONTHS } from '../components/FiltersBar.jsx';
 import PerformanceSection from '../components/PerformanceSection.jsx';
+import { useWidgets } from '../context/WidgetsContext.jsx';
 import { api } from '../lib/api.js';
 import { formatNumber } from '../lib/format.js';
 
 export default function DashboardPage() {
   const { dataset } = useDataset();
   const filters = useFilters();
+  const { isVisible } = useWidgets();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,41 +42,47 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          <div className="card">
-            <h3>Totals</h3>
-            <div className="stat-grid">
-              <div className="stat-tile">
-                <div className="label">Total Sales</div>
-                <div className="value">{formatNumber(totals.totalSales)}</div>
-              </div>
-              <div className="stat-tile">
-                <div className="label">Stores</div>
-                <div className="value">{totals.storeCount}</div>
-              </div>
-              <div className="stat-tile">
-                <div className="label">Records</div>
-                <div className="value">{records.length}</div>
-              </div>
-              <div className="stat-tile">
-                <div className="label">Avg Sales / Record</div>
-                <div className="value">{formatNumber(totals.avgSales)}</div>
+          {isVisible('totals') && (
+            <div className="card">
+              <h3>Totals</h3>
+              <div className="stat-grid">
+                <div className="stat-tile">
+                  <div className="label">Total Sales</div>
+                  <div className="value">{formatNumber(totals.totalSales)}</div>
+                </div>
+                <div className="stat-tile">
+                  <div className="label">Stores</div>
+                  <div className="value">{totals.storeCount}</div>
+                </div>
+                <div className="stat-tile">
+                  <div className="label">Records</div>
+                  <div className="value">{records.length}</div>
+                </div>
+                <div className="stat-tile">
+                  <div className="label">Avg Sales / Record</div>
+                  <div className="value">{formatNumber(totals.avgSales)}</div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="card">
-            <h3>Sales by Store</h3>
-            <BreakdownBars rows={byStore} labelKey="name" />
-          </div>
+          {isVisible('by_store') && (
+            <div className="card">
+              <h3>Sales by Store</h3>
+              <BreakdownBars rows={byStore} labelKey="name" />
+            </div>
+          )}
 
-          <div className="card">
-            <h3>Sales by Month</h3>
-            <BreakdownBars rows={byMonth} labelKey="name" />
-          </div>
+          {isVisible('by_month') && (
+            <div className="card">
+              <h3>Sales by Month</h3>
+              <BreakdownBars rows={byMonth} labelKey="name" />
+            </div>
+          )}
         </>
       )}
 
-      <PerformanceSection />
+      {isVisible('performance') && <PerformanceSection />}
     </div>
   );
 }

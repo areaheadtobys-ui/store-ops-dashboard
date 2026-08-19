@@ -5,6 +5,7 @@ import storesRouter from './routes/stores.js';
 import salesRouter from './routes/sales.js';
 import performanceRouter from './routes/performance.js';
 import remarksRouter from './routes/remarks.js';
+import widgetsRouter from './routes/widgets.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -17,6 +18,7 @@ app.use('/api/stores', storesRouter);
 app.use('/api/sales', salesRouter);
 app.use('/api/performance', performanceRouter);
 app.use('/api/remarks', remarksRouter);
+app.use('/api/widgets', widgetsRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
