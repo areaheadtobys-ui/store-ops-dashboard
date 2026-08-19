@@ -7,10 +7,11 @@ import { formatNumber, formatPercent } from '../lib/format.js';
 
 export default function PerformanceSection() {
   const { dataset } = useDataset();
-  const { years } = useFilters();
+  const { years, stores } = useFilters();
   const [settings, setSettings] = useState(null);
   const [year, setYear] = useState(null);
   const [compareYear, setCompareYear] = useState(null);
+  const [storeFilter, setStoreFilter] = useState('all');
   const [remarkMonth, setRemarkMonth] = useState(new Date().getMonth() + 1);
   const [perf, setPerf] = useState(null);
   const [remarks, setRemarks] = useState({});
@@ -19,6 +20,7 @@ export default function PerformanceSection() {
 
   useEffect(() => {
     api.get(`/performance/settings?dataset=${dataset}`).then(setSettings);
+    setStoreFilter('all');
   }, [dataset]);
 
   useEffect(() => {
@@ -34,8 +36,9 @@ export default function PerformanceSection() {
     setLoading(true);
     const params = new URLSearchParams({ dataset, year });
     if (compareYear) params.set('compareYear', compareYear);
+    if (storeFilter !== 'all') params.set('storeId', storeFilter);
     api.get(`/performance?${params.toString()}`).then(setPerf).finally(() => setLoading(false));
-  }, [dataset, year, compareYear]);
+  }, [dataset, year, compareYear, storeFilter]);
 
   useEffect(() => {
     if (!year || !remarkMonth) return;
@@ -69,6 +72,13 @@ export default function PerformanceSection() {
       </div>
 
       <div className="filter-bar">
+        <div className="field">
+          <label>Store</label>
+          <select value={storeFilter} onChange={(e) => setStoreFilter(e.target.value)}>
+            <option value="all">All stores</option>
+            {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
         <div className="field">
           <label>Sales year</label>
           <select value={year ?? ''} onChange={(e) => setYear(Number(e.target.value))}>
