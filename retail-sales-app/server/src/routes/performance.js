@@ -27,7 +27,7 @@ router.patch('/settings', (req, res) => {
 });
 
 router.get('/', (req, res) => {
-  const { dataset, year, compareYear } = req.query;
+  const { dataset, year, compareYear, storeId } = req.query;
   if (!dataset || !year) return res.status(400).json({ error: 'dataset and year are required' });
 
   const settings = db.prepare('SELECT * FROM performance_settings WHERE dataset = ?').get(dataset);
@@ -83,7 +83,11 @@ router.get('/', (req, res) => {
     }
   }
 
-  res.json({ method, threshold, results });
+  // Filter to one store only after ranking, so top/bottom-% flags stay
+  // computed relative to every store, not just the one being viewed.
+  const filtered = storeId ? results.filter((r) => String(r.storeId) === String(storeId)) : results;
+
+  res.json({ method, threshold, results: filtered });
 });
 
 export default router;
