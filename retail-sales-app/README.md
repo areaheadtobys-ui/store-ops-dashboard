@@ -38,22 +38,47 @@ cd retail-sales-app/client
 npm install
 npm run dev
 ```
-Open http://localhost:5173 — the Vite dev server proxies `/api/*` to the backend, so no extra config is needed. The very first visit asks you to **set a shared password** — anyone else who accesses the app (locally or via a tunnel, see below) uses that same password to sign in. Change it any time from Settings.
+Open http://localhost:5173 — the Vite dev server proxies `/api/*` to the backend, so no extra config is needed. The very first visit asks you to **set a shared password** — anyone else who accesses the app (locally, on the same WiFi, or via a tunnel/hosting, see below) uses that same password to sign in. Change it any time from Settings.
+
+## Combined single-port mode (for sharing)
+
+For day-to-day solo use, the two-terminal setup above is fine. For sharing with anyone else — same WiFi or hosted — it's simpler to build the client once and let the server serve everything from one port:
+
+```bash
+cd retail-sales-app/client
+npm install
+npm run build          # produces client/dist
+
+cd ../server
+npm install
+npm start               # serves the app + API together on http://localhost:4000
+```
+
+Now there's just one process, one port, and one URL (`http://localhost:4000`) instead of two. Re-run `npm run build` in `client/` whenever you pull code changes; `npm start` in `server/` always picks up the latest build automatically.
+
+## Sharing with other users on the same WiFi/office network
+
+The server listens on your network, not just `localhost`, so anyone on the same WiFi can reach it directly — no extra software needed:
+
+1. Run the combined single-port mode above (`npm start` in `server/`, after building the client).
+2. Find your computer's local network address: open a terminal and run `ipconfig` (Windows) or `ifconfig`/`ip addr` (Mac/Linux) — look for the **IPv4 Address** on your active WiFi/Ethernet adapter, e.g. `192.168.1.42`.
+3. On Windows, the first time you start the server you may get a **Windows Defender Firewall** popup asking to allow Node.js — click **Allow access** (at least for Private networks).
+4. Share `http://<that-IP>:4000` with people on the same WiFi — they open it in their own browser and sign in with the shared password.
+
+This only works while you're on the same network and your computer + the server process stay running.
 
 ## Sharing with other users over the internet
 
-Your computer isn't a public web server by default, so `localhost:5173` only works on your own machine unless you expose it. The quickest way, with no account signup required, is a [Cloudflare Quick Tunnel](https://developers.cloudflare.com/pages/how-to/preview-with-cloudflare-tunnel/):
+Your computer isn't a public web server by default, so the URLs above only work on your own network unless you expose it further. Two ways to do that:
 
-1. Install `cloudflared` ([download page](https://github.com/cloudflare/cloudflared/releases) — Windows: grab `cloudflared-windows-amd64.exe`, rename it to `cloudflared.exe` for convenience).
-2. With both `npm run dev` servers already running (server + client, as above), run in a **third** terminal:
-   ```bash
-   cloudflared tunnel --url http://localhost:5173
-   ```
-3. It prints a random public URL like `https://random-words-here.trycloudflare.com` — share that link with the people who need access. It only works while this command and both `npm run dev` processes keep running on your machine.
+**Option A — a tunnel** (quick, temporary, needs your computer on and running): [Cloudflare Quick Tunnel](https://developers.cloudflare.com/pages/how-to/preview-with-cloudflare-tunnel/) or `npx localtunnel` point a public URL at the combined server above (`cloudflared tunnel --url http://localhost:4000` or `npx localtunnel --port 4000`). **Heads up:** on a locked-down work computer, both may be blocked outright by security software or network policy (a real user hit "Access is denied" running the `cloudflared.exe`, then `npx localtunnel` hung indefinitely trying to connect) — that's the machine's security policy working as intended, not a bug in this app, and isn't something to try to bypass. If that happens, use the same-WiFi option above, or Option B below.
 
-Anyone opening that link will be asked to sign in with the shared password you set. This is fine for occasional/small-team use; for something that needs to be reachable any time independent of your computer being on, you'd want to deploy the app to an always-on host instead (e.g. Render, Railway, Fly.io) — a bigger step that isn't set up here.
+**Option B — real hosting** (always-on, independent of your computer): deploy this app (the combined single-port mode) to a host like Render, Railway, or Fly.io.
+- The server reads `PORT` from the environment automatically (hosting providers set this for you) and `DATA_DIR` to control where the SQLite file is written — point `DATA_DIR` at your host's persistent disk/volume path if it has one.
+- **Free tiers on most hosts do not persist disk storage** — the SQLite file (and everything imported) can be wiped on every redeploy, and often on every restart after a period of inactivity. If you go this route on a free tier, treat any data you import as temporary/at-risk, and consider periodically exporting anything important. A paid tier with a persistent disk (commonly ~$5–7/month on Render) is what actually keeps data safe long-term.
+- Build command: `cd client && npm install && npm run build && cd ../server && npm install`. Start command: `cd server && npm start`.
 
-Since everyone shares one password and one dataset, there's no per-user audit trail of who changed what — keep that in mind for anything sensitive.
+Anyone opening the link (tunnel or hosted) is asked to sign in with the shared password you set. Since everyone shares one password and one dataset, there's no per-user audit trail of who changed what — keep that in mind for anything sensitive.
 
 ## Feature tour / what to test
 
