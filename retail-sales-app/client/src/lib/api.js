@@ -19,6 +19,13 @@ export const api = {
       body: JSON.stringify(body),
     }).then(handle);
   },
+  put(path, body) {
+    return fetch(`/api${path}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(handle);
+  },
   patch(path, body) {
     return fetch(`/api${path}`, {
       method: 'PATCH',
