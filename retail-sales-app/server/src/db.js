@@ -94,6 +94,19 @@ CREATE TABLE IF NOT EXISTS dashboard_widgets (
   sort_order INTEGER NOT NULL DEFAULT 0,
   UNIQUE (dataset, widget_key)
 );
+
+CREATE TABLE IF NOT EXISTS app_auth (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  password_hash TEXT NOT NULL,
+  salt TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL
+);
 `);
 
 const DEFAULT_WIDGETS = [

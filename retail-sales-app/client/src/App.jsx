@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import DatasetToggle from './components/DatasetToggle.jsx';
 import NavTabs from './components/NavTabs.jsx';
 import { useDataset } from './context/DatasetContext.jsx';
+import { useAuth } from './context/AuthContext.jsx';
 import { FiltersProvider } from './context/FiltersContext.jsx';
 import { WidgetsProvider } from './context/WidgetsContext.jsx';
 import UploadPage from './pages/UploadPage.jsx';
@@ -14,12 +15,16 @@ import SettingsPage from './pages/SettingsPage.jsx';
 
 export default function App() {
   const { label } = useDataset();
+  const { logout } = useAuth();
 
   return (
     <div className="app-shell">
       <div className="top-bar">
         <div className="brand">Retail Sales Analysis</div>
-        <DatasetToggle />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <DatasetToggle />
+          <button className="btn secondary" onClick={logout}>Log out</button>
+        </div>
       </div>
       <WidgetsProvider>
         <NavTabs />
