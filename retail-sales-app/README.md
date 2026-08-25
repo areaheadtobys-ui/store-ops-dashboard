@@ -95,6 +95,8 @@ Anyone opening the link (tunnel or hosted) is asked to sign in with the shared p
 ### Dashboard
 Totals, Sales by Store, and Sales by Month, filterable by Store / Year / Month. Filters carry over as you move between Dashboard, Sales Trend, and the comparison pages.
 
+**Sales button** (below the main filters): click to expand a Top 10 leaderboard. Pick a Year, a From/To month range (e.g. Jan–Jun instead of the whole year), and a mode — **Vs. Target** or **Vs. Last Year** — to rank your 10 best-performing stores for that period.
+
 ### Sales Trend
 Monthly sales over time. Pick a store to see just its line, or leave "All stores" to compare every store at once. Hover the chart for exact values.
 
