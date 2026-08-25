@@ -3,6 +3,7 @@ import { useDataset } from '../context/DatasetContext.jsx';
 import { useFilters, buildQuery } from '../context/FiltersContext.jsx';
 import FiltersBar, { MONTHS } from '../components/FiltersBar.jsx';
 import PerformanceSection from '../components/PerformanceSection.jsx';
+import SalesSpotlight from '../components/SalesSpotlight.jsx';
 import { useWidgets } from '../context/WidgetsContext.jsx';
 import { api } from '../lib/api.js';
 import { formatNumber } from '../lib/format.js';
@@ -32,6 +33,8 @@ export default function DashboardPage() {
         <h2>Dashboard</h2>
         <FiltersBar />
       </div>
+
+      <SalesSpotlight />
 
       {loading ? (
         <div className="card"><p className="text-muted">Loading…</p></div>
