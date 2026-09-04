@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useDataset } from '../context/DatasetContext.jsx';
+import { useArea } from '../context/AreaContext.jsx';
 import { useFilters, buildQuery } from '../context/FiltersContext.jsx';
 import FiltersBar, { MONTHS } from '../components/FiltersBar.jsx';
+import KpiHeader from '../components/KpiHeader.jsx';
 import PerformanceSection from '../components/PerformanceSection.jsx';
 import SalesSpotlight from '../components/SalesSpotlight.jsx';
 import { useWidgets } from '../context/WidgetsContext.jsx';
@@ -9,19 +10,32 @@ import { api } from '../lib/api.js';
 import { formatNumber } from '../lib/format.js';
 
 export default function DashboardPage() {
-  const { dataset } = useDataset();
+  const { areaId, selectedArea } = useArea();
   const filters = useFilters();
   const { isVisible } = useWidgets();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState(null);
+  const [kpiData, setKpiData] = useState(null);
+  const [kpiLoading, setKpiLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    api.get(`/sales?${buildQuery(dataset, filters)}`)
+    api.get(`/sales?${buildQuery(areaId, filters)}`)
       .then(setRecords)
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataset, filters.storeId, filters.year, filters.month]);
+  }, [areaId, filters.storeId, filters.year, filters.month]);
+
+  useEffect(() => {
+    setKpiLoading(true);
+    const params = new URLSearchParams({ areaId: String(areaId) });
+    if (period) { params.set('year', period.year); params.set('month', period.month); }
+    api.get(`/company/dashboard?${params.toString()}`).then((res) => {
+      setKpiData(res);
+      if (!period) setPeriod({ year: res.year, month: res.month });
+    }).finally(() => setKpiLoading(false));
+  }, [areaId, period]);
 
   const byStore = useMemo(() => aggregateByStore(records), [records]);
   const byMonth = useMemo(() => aggregateByMonth(records), [records]);
@@ -29,8 +43,10 @@ export default function DashboardPage() {
 
   return (
     <div>
+      <KpiHeader title={`${selectedArea?.area_name || ''} Area Dashboard`} data={kpiData} loading={kpiLoading} onChangePeriod={setPeriod} />
+
       <div className="card">
-        <h2>Dashboard</h2>
+        <h2>Store filters</h2>
         <FiltersBar />
       </div>
 

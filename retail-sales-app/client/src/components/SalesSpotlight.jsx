@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useDataset } from '../context/DatasetContext.jsx';
+import { useArea } from '../context/AreaContext.jsx';
 import { useFilters } from '../context/FiltersContext.jsx';
 import { MONTHS } from './FiltersBar.jsx';
 import { api } from '../lib/api.js';
 import { formatNumber, formatPercent } from '../lib/format.js';
 
 export default function SalesSpotlight() {
-  const { dataset } = useDataset();
+  const { areaId } = useArea();
   const { years } = useFilters();
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(null);
@@ -23,9 +23,9 @@ export default function SalesSpotlight() {
   useEffect(() => {
     if (!open || !year || monthFrom > monthTo) return;
     setLoading(true);
-    const params = new URLSearchParams({ dataset, year, mode, monthFrom, monthTo, limit: 10 });
+    const params = new URLSearchParams({ areaId: String(areaId), year, mode, monthFrom, monthTo, limit: 10 });
     api.get(`/sales/top-performers?${params.toString()}`).then(setData).finally(() => setLoading(false));
-  }, [open, dataset, year, mode, monthFrom, monthTo]);
+  }, [open, areaId, year, mode, monthFrom, monthTo]);
 
   return (
     <div className="card">

@@ -1,18 +1,22 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { resolveAreaScope } from '../rbac.js';
 
 const router = Router();
 
 router.get('/settings', (req, res) => {
-  const { dataset } = req.query;
-  if (!dataset) return res.status(400).json({ error: 'dataset is required' });
-  const settings = db.prepare('SELECT * FROM performance_settings WHERE dataset = ?').get(dataset);
+  const { areaId, ok } = resolveAreaScope(req.user, req.query.areaId);
+  if (!ok) return res.status(403).json({ error: 'Not permitted for this area' });
+  if (areaId === null) return res.status(400).json({ error: 'A single area must be selected' });
+  const settings = db.prepare('SELECT * FROM performance_settings WHERE area_id = ?').get(areaId);
   res.json(settings);
 });
 
 router.patch('/settings', (req, res) => {
-  const { dataset, method, pct_threshold } = req.body;
-  if (!dataset) return res.status(400).json({ error: 'dataset is required' });
+  const { areaId: rawAreaId, method, pct_threshold } = req.body;
+  const { areaId, ok } = resolveAreaScope(req.user, rawAreaId);
+  if (!ok) return res.status(403).json({ error: 'Not permitted for this area' });
+  if (areaId === null) return res.status(400).json({ error: 'A single area must be selected' });
   if (method && !['top_bottom_pct', 'vs_target'].includes(method)) {
     return res.status(400).json({ error: 'Invalid method' });
   }
@@ -21,17 +25,21 @@ router.patch('/settings', (req, res) => {
       method = COALESCE(?, method),
       pct_threshold = COALESCE(?, pct_threshold),
       updated_at = datetime('now')
-    WHERE dataset = ?
-  `).run(method ?? null, pct_threshold ?? null, dataset);
-  res.json(db.prepare('SELECT * FROM performance_settings WHERE dataset = ?').get(dataset));
+    WHERE area_id = ?
+  `).run(method ?? null, pct_threshold ?? null, areaId);
+  res.json(db.prepare('SELECT * FROM performance_settings WHERE area_id = ?').get(areaId));
 });
 
 router.get('/', (req, res) => {
-  const { dataset, year, compareYear, storeId } = req.query;
-  if (!dataset || !year) return res.status(400).json({ error: 'dataset and year are required' });
+  const { areaId, ok } = resolveAreaScope(req.user, req.query.areaId);
+  if (!ok) return res.status(403).json({ error: 'Not permitted for this area' });
+  const { year, compareYear, storeId } = req.query;
+  if (!year) return res.status(400).json({ error: 'year is required' });
 
-  const settings = db.prepare('SELECT * FROM performance_settings WHERE dataset = ?').get(dataset);
-  const stores = db.prepare('SELECT id, name FROM stores WHERE dataset = ? AND is_active = 1 ORDER BY name').all(dataset);
+  const settings = areaId !== null ? db.prepare('SELECT * FROM performance_settings WHERE area_id = ?').get(areaId) : null;
+  const stores = areaId === null
+    ? db.prepare('SELECT id, name FROM stores WHERE is_active = 1 ORDER BY name').all()
+    : db.prepare('SELECT id, name FROM stores WHERE area_id = ? AND is_active = 1 ORDER BY name').all(areaId);
 
   const sumFor = db.prepare(`
     SELECT COALESCE(SUM(sales_amount), 0) AS sales, COALESCE(SUM(target_amount), 0) AS target,

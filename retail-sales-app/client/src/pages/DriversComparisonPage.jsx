@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useDataset } from '../context/DatasetContext.jsx';
+import { useArea } from '../context/AreaContext.jsx';
 import { useFilters } from '../context/FiltersContext.jsx';
 import { MONTHS } from '../components/FiltersBar.jsx';
 import GroupedBarChart from '../components/GroupedBarChart.jsx';
@@ -8,7 +8,7 @@ import { colorForIndex } from '../lib/chartColors.js';
 import { formatNumber, formatPercent } from '../lib/format.js';
 
 export default function DriversComparisonPage() {
-  const { dataset } = useDataset();
+  const { areaId } = useArea();
   const { storeId, setStoreId, stores, years } = useFilters();
   const [drivers, setDrivers] = useState([]);
   const [driverKey, setDriverKey] = useState(null);
@@ -18,11 +18,11 @@ export default function DriversComparisonPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get(`/sales/drivers?dataset=${dataset}`).then((res) => {
+    api.get(`/sales/drivers?areaId=${areaId}`).then((res) => {
       setDrivers(res);
       setDriverKey(res.length > 0 ? res[0].key : null);
     });
-  }, [dataset]);
+  }, [areaId]);
 
   useEffect(() => {
     if (years.length === 0) return;
@@ -34,10 +34,10 @@ export default function DriversComparisonPage() {
   useEffect(() => {
     if (!yearA || !yearB) return;
     setLoading(true);
-    const params = new URLSearchParams({ dataset });
+    const params = new URLSearchParams({ areaId: String(areaId) });
     if (storeId !== 'all') params.set('storeId', storeId);
     api.get(`/sales?${params.toString()}`).then(setRecords).finally(() => setLoading(false));
-  }, [dataset, storeId, yearA, yearB]);
+  }, [areaId, storeId, yearA, yearB]);
 
   const driverLabel = drivers.find((d) => d.key === driverKey)?.label || driverKey;
   const { categories, series, rows } = useMemo(

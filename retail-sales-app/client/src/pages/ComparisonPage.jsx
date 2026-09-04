@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useDataset } from '../context/DatasetContext.jsx';
+import { useArea } from '../context/AreaContext.jsx';
 import { useFilters } from '../context/FiltersContext.jsx';
 import { MONTHS } from '../components/FiltersBar.jsx';
 import GroupedBarChart from '../components/GroupedBarChart.jsx';
@@ -8,7 +8,7 @@ import { colorForIndex } from '../lib/chartColors.js';
 import { formatNumber, formatPercent } from '../lib/format.js';
 
 export default function ComparisonPage() {
-  const { dataset } = useDataset();
+  const { areaId } = useArea();
   const { storeId, setStoreId, stores, years } = useFilters();
   const [yearA, setYearA] = useState(null);
   const [yearB, setYearB] = useState(null);
@@ -25,10 +25,10 @@ export default function ComparisonPage() {
   useEffect(() => {
     if (!yearA || !yearB) return;
     setLoading(true);
-    const params = new URLSearchParams({ dataset });
+    const params = new URLSearchParams({ areaId: String(areaId) });
     if (storeId !== 'all') params.set('storeId', storeId);
     api.get(`/sales?${params.toString()}`).then(setRecords).finally(() => setLoading(false));
-  }, [dataset, storeId, yearA, yearB]);
+  }, [areaId, storeId, yearA, yearB]);
 
   const { categories, series, rows } = useMemo(
     () => buildComparison(records, yearA, yearB),

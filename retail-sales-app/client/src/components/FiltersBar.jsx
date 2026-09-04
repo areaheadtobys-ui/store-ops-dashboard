@@ -1,4 +1,5 @@
 import { useFilters } from '../context/FiltersContext.jsx';
+import { useArea } from '../context/AreaContext.jsx';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -6,14 +7,15 @@ const MONTHS = [
 ];
 
 export default function FiltersBar({ showStore = true, showYear = true, showMonth = true }) {
-  const { stores, years, storeId, setStoreId, year, setYear, month, setMonth } = useFilters();
+  const { stores, years, storeId, setStoreId, year, setYear, month, setMonth, storeLocked } = useFilters();
+  const { isCompanyView } = useArea();
 
   return (
     <div className="filter-bar">
-      {showStore && (
+      {showStore && !isCompanyView && (
         <div className="field">
           <label>Store</label>
-          <select value={storeId} onChange={(e) => setStoreId(e.target.value)}>
+          <select value={storeId} onChange={(e) => setStoreId(e.target.value)} disabled={storeLocked}>
             <option value="all">All stores</option>
             {stores.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>

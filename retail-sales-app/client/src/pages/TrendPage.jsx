@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useDataset } from '../context/DatasetContext.jsx';
+import { useArea } from '../context/AreaContext.jsx';
 import { useFilters } from '../context/FiltersContext.jsx';
 import FiltersBar, { MONTHS } from '../components/FiltersBar.jsx';
 import LineTrendChart from '../components/LineTrendChart.jsx';
@@ -7,18 +7,18 @@ import { api } from '../lib/api.js';
 import { colorForIndex } from '../lib/chartColors.js';
 
 export default function TrendPage() {
-  const { dataset } = useDataset();
+  const { areaId } = useArea();
   const { storeId, year, stores } = useFilters();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    const params = new URLSearchParams({ dataset });
+    const params = new URLSearchParams({ areaId: String(areaId) });
     if (storeId !== 'all') params.set('storeId', storeId);
     if (year !== 'all') params.set('year', year);
     api.get(`/sales?${params.toString()}`).then(setRecords).finally(() => setLoading(false));
-  }, [dataset, storeId, year]);
+  }, [areaId, storeId, year]);
 
   const { categories, series } = useMemo(() => buildTrendSeries(records, storeId, stores), [records, storeId, stores]);
 

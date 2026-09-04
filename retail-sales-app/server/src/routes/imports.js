@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import db from '../db.js';
 import { APP_FIELDS } from '../fields.js';
 import { parseWorkbook, suggestMapping, performImport } from '../services/importService.js';
+import { resolveAreaScope } from '../rbac.js';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 const router = Router();
@@ -30,10 +31,10 @@ router.get('/fields', (req, res) => {
 });
 
 router.post('/preview', upload.single('file'), (req, res) => {
-  const { dataset } = req.body;
-  if (!dataset || !['company', 'franchise'].includes(dataset)) {
-    return res.status(400).json({ error: 'dataset must be "company" or "franchise"' });
-  }
+  const { areaId: rawAreaId } = req.body;
+  const { areaId, ok } = resolveAreaScope(req.user, rawAreaId);
+  if (!ok) return res.status(403).json({ error: 'Not permitted for this area' });
+  if (areaId === null) return res.status(400).json({ error: 'Select a single Area to import into' });
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
   let parsed;
@@ -47,9 +48,9 @@ router.post('/preview', upload.single('file'), (req, res) => {
     return res.status(400).json({ error: 'No columns detected in the sheet' });
   }
 
-  const { mapping, exactMatch } = suggestMapping(dataset, parsed.headers);
+  const { mapping, exactMatch } = suggestMapping(areaId, parsed.headers);
   const token = cacheUpload({
-    dataset,
+    areaId,
     filename: req.file.originalname,
     headers: parsed.headers,
     rows: parsed.rows,
@@ -84,11 +85,12 @@ router.post('/confirm', (req, res) => {
   }
 
   const result = performImport({
-    dataset: entry.dataset,
+    areaId: entry.areaId,
     filename: entry.filename,
     headers: entry.headers,
     rows: entry.rows,
     mapping,
+    enteredBy: req.user.id,
   });
 
   pendingUploads.delete(uploadToken);
@@ -96,15 +98,19 @@ router.post('/confirm', (req, res) => {
 });
 
 router.get('/', (req, res) => {
-  const { dataset } = req.query;
-  if (!dataset) return res.status(400).json({ error: 'dataset is required' });
-  const imports = db.prepare('SELECT * FROM imports WHERE dataset = ? ORDER BY uploaded_at DESC LIMIT 20').all(dataset);
+  const { areaId, ok } = resolveAreaScope(req.user, req.query.areaId);
+  if (!ok) return res.status(403).json({ error: 'Not permitted for this area' });
+  const imports = areaId === null
+    ? db.prepare('SELECT * FROM imports ORDER BY uploaded_at DESC LIMIT 20').all()
+    : db.prepare('SELECT * FROM imports WHERE area_id = ? ORDER BY uploaded_at DESC LIMIT 20').all(areaId);
   res.json(imports.map((i) => ({ ...i, errors: JSON.parse(i.errors_json || '[]') })));
 });
 
 router.delete('/:id', (req, res) => {
   const importRow = db.prepare('SELECT * FROM imports WHERE id = ?').get(req.params.id);
   if (!importRow) return res.status(404).json({ error: 'Import not found' });
+  const { ok } = resolveAreaScope(req.user, importRow.area_id);
+  if (!ok) return res.status(403).json({ error: 'Not permitted for this area' });
 
   // Only removes rows still attributed to this import — if a later upload already
   // corrected a row, it now belongs to that later import and is left alone.
