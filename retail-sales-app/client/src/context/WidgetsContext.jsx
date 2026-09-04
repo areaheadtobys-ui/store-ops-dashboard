@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useDataset } from './DatasetContext.jsx';
+import { useArea } from './AreaContext.jsx';
 import { api } from '../lib/api.js';
 
 const WidgetsContext = createContext(null);
@@ -15,12 +15,19 @@ export const WIDGET_LABELS = {
 };
 
 export function WidgetsProvider({ children }) {
-  const { dataset } = useDataset();
+  const { areaId, isCompanyView } = useArea();
   const [widgets, setWidgets] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   function reload() {
-    api.get(`/widgets?dataset=${dataset}`).then((rows) => {
+    if (isCompanyView) {
+      // The Company Dashboard has its own fixed layout — per-area widget
+      // toggles don't apply there.
+      setWidgets([]);
+      setLoaded(true);
+      return;
+    }
+    api.get(`/widgets?areaId=${areaId}`).then((rows) => {
       setWidgets(rows);
       setLoaded(true);
     });
@@ -30,16 +37,17 @@ export function WidgetsProvider({ children }) {
     setLoaded(false);
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataset]);
+  }, [areaId]);
 
   function isVisible(key) {
+    if (isCompanyView) return true;
     if (!loaded) return true;
     const w = widgets.find((x) => x.widget_key === key);
     return w ? !!w.visible : true;
   }
 
   async function setVisible(key, visible) {
-    await api.patch(`/widgets/${key}`, { dataset, visible });
+    await api.patch(`/widgets/${key}`, { areaId, visible });
     setWidgets((prev) => prev.map((w) => (w.widget_key === key ? { ...w, visible: visible ? 1 : 0 } : w)));
   }
 

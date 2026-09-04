@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useDataset } from '../context/DatasetContext.jsx';
+import { useArea } from '../context/AreaContext.jsx';
 import { api } from '../lib/api.js';
 
 const FIELD_OPTIONS_CACHE = { current: null };
 
 export default function UploadPage() {
-  const { dataset } = useDataset();
+  const { areaId, selectedArea } = useArea();
   const fileInputRef = useRef(null);
 
   const [fields, setFields] = useState(FIELD_OPTIONS_CACHE.current || []);
@@ -17,6 +17,8 @@ export default function UploadPage() {
   const [summary, setSummary] = useState(null);
   const [history, setHistory] = useState([]);
 
+  const isCompanyView = areaId === 'all';
+
   useEffect(() => {
     if (!FIELD_OPTIONS_CACHE.current) {
       api.get('/imports/fields').then((res) => {
@@ -26,10 +28,10 @@ export default function UploadPage() {
     }
     loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataset]);
+  }, [areaId]);
 
   function loadHistory() {
-    api.get(`/imports?dataset=${dataset}`).then(setHistory).catch(() => {});
+    api.get(`/imports?areaId=${areaId}`).then(setHistory).catch(() => {});
   }
 
   async function handleFileChange(e) {
@@ -41,7 +43,7 @@ export default function UploadPage() {
     setBusy(true);
     try {
       const formData = new FormData();
-      formData.append('dataset', dataset);
+      formData.append('areaId', areaId);
       formData.append('file', file);
       const res = await api.upload('/imports/preview', formData);
       setPreview(res);
@@ -102,11 +104,20 @@ export default function UploadPage() {
     }
   }
 
+  if (isCompanyView) {
+    return (
+      <div className="card">
+        <h2>Import monthly sales data</h2>
+        <p className="text-muted">Select a single Area above (Central, North, or South) to import data into it. Imports are per-Area.</p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="card">
         <h2>Import monthly sales data</h2>
-        <p>Upload your Excel file for the <strong>{dataset === 'company' ? 'Company Owned' : 'Franchise'}</strong> dataset. Re-uploading a month you've already imported will update those rows, not duplicate them.</p>
+        <p>Upload your Excel file for <strong>{selectedArea?.area_name || 'this Area'}</strong>. Re-uploading a month you've already imported will update those rows, not duplicate them.</p>
         <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} disabled={busy} />
       </div>
 
@@ -131,7 +142,7 @@ export default function UploadPage() {
       <div className="card">
         <h3>Recent imports</h3>
         {history.length === 0 ? (
-          <p className="text-muted">No imports yet for this dataset.</p>
+          <p className="text-muted">No imports yet for this Area.</p>
         ) : (
           <>
             <p className="text-muted">Uploaded the wrong file? Remove it below — this deletes the rows it added, unless a later upload already corrected them.</p>

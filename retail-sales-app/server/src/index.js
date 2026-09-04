@@ -9,7 +9,11 @@ import salesRouter from './routes/sales.js';
 import performanceRouter from './routes/performance.js';
 import remarksRouter from './routes/remarks.js';
 import widgetsRouter from './routes/widgets.js';
-import authRouter, { isAuthenticated } from './routes/auth.js';
+import areasRouter from './routes/areas.js';
+import usersRouter from './routes/users.js';
+import companyRouter from './routes/company.js';
+import rankingsRouter from './routes/rankings.js';
+import authRouter, { getRequestUser } from './routes/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -26,7 +30,9 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRouter);
 
 app.use('/api', (req, res, next) => {
-  if (!isAuthenticated(req)) return res.status(401).json({ error: 'Not signed in' });
+  const user = getRequestUser(req);
+  if (!user) return res.status(401).json({ error: 'Not signed in' });
+  req.user = user;
   next();
 });
 
@@ -36,6 +42,10 @@ app.use('/api/sales', salesRouter);
 app.use('/api/performance', performanceRouter);
 app.use('/api/remarks', remarksRouter);
 app.use('/api/widgets', widgetsRouter);
+app.use('/api/areas', areasRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/company', companyRouter);
+app.use('/api/rankings', rankingsRouter);
 
 // When the client has been built (npm run build in ../client), serve it from
 // this same server so the whole app runs as a single process on one port —

@@ -4,7 +4,7 @@ import { api } from '../lib/api.js';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [status, setStatus] = useState(null); // { passwordSet, authenticated }
+  const [status, setStatus] = useState(null); // { hasUsers, authenticated, user }
   const [loading, setLoading] = useState(true);
 
   function refresh() {
@@ -15,13 +15,13 @@ export function AuthProvider({ children }) {
     refresh();
   }, []);
 
-  async function setupPassword(password) {
-    await api.post('/auth/setup', { password });
+  async function setupSuperAdmin({ name, email, password }) {
+    await api.post('/auth/setup', { name, email, password });
     await refresh();
   }
 
-  async function login(password) {
-    await api.post('/auth/login', { password });
+  async function login({ email, password }) {
+    await api.post('/auth/login', { email, password });
     await refresh();
   }
 
@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ status, loading, setupPassword, login, logout, refresh }}>
+    <AuthContext.Provider value={{ status, user: status?.user || null, loading, setupSuperAdmin, login, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );
@@ -42,3 +42,9 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
+
+export const ROLE_LABELS = {
+  super_admin: 'Super Admin',
+  area_supervisor: 'Area Supervisor',
+  store_supervisor: 'Store Supervisor',
+};

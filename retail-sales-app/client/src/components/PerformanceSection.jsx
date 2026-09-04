@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useDataset } from '../context/DatasetContext.jsx';
+import { useArea } from '../context/AreaContext.jsx';
 import { useFilters } from '../context/FiltersContext.jsx';
 import { MONTHS } from './FiltersBar.jsx';
 import { api } from '../lib/api.js';
 import { formatNumber, formatPercent } from '../lib/format.js';
 
 export default function PerformanceSection() {
-  const { dataset } = useDataset();
+  const { areaId } = useArea();
   const { years, stores } = useFilters();
   const [settings, setSettings] = useState(null);
   const [year, setYear] = useState(null);
@@ -19,9 +19,9 @@ export default function PerformanceSection() {
   const [savingStore, setSavingStore] = useState(null);
 
   useEffect(() => {
-    api.get(`/performance/settings?dataset=${dataset}`).then(setSettings);
+    api.get(`/performance/settings?areaId=${areaId}`).then(setSettings);
     setStoreFilter('all');
-  }, [dataset]);
+  }, [areaId]);
 
   useEffect(() => {
     if (years.length === 0) return;
@@ -34,23 +34,23 @@ export default function PerformanceSection() {
   useEffect(() => {
     if (!year) return;
     setLoading(true);
-    const params = new URLSearchParams({ dataset, year });
+    const params = new URLSearchParams({ areaId: String(areaId), year });
     if (compareYear) params.set('compareYear', compareYear);
     if (storeFilter !== 'all') params.set('storeId', storeFilter);
     api.get(`/performance?${params.toString()}`).then(setPerf).finally(() => setLoading(false));
-  }, [dataset, year, compareYear, storeFilter]);
+  }, [areaId, year, compareYear, storeFilter]);
 
   useEffect(() => {
     if (!year || !remarkMonth) return;
-    api.get(`/remarks?dataset=${dataset}&year=${year}&month=${remarkMonth}`).then((rows) => {
+    api.get(`/remarks?areaId=${areaId}&year=${year}&month=${remarkMonth}`).then((rows) => {
       const map = {};
       for (const r of rows) map[r.store_id] = r.text;
       setRemarks(map);
     });
-  }, [dataset, year, remarkMonth]);
+  }, [areaId, year, remarkMonth]);
 
   async function updateSetting(patch) {
-    const updated = await api.patch('/performance/settings', { dataset, ...patch });
+    const updated = await api.patch('/performance/settings', { areaId, ...patch });
     setSettings(updated);
   }
 

@@ -33,9 +33,9 @@ const DRIVER_GUESS_RULES = [
   { test: /conversion/i },
 ];
 
-export function suggestMapping(dataset, headers) {
+export function suggestMapping(areaId, headers) {
   const signature = [...headers].sort().join('|');
-  const stored = db.prepare('SELECT * FROM field_mappings WHERE dataset = ?').get(dataset);
+  const stored = db.prepare('SELECT * FROM field_mappings WHERE area_id = ?').get(areaId);
 
   if (stored && stored.source_columns_signature === signature) {
     return { mapping: JSON.parse(stored.mapping_json), exactMatch: true };
@@ -63,43 +63,43 @@ export function suggestMapping(dataset, headers) {
   return { mapping, exactMatch: false };
 }
 
-export function saveMapping(dataset, headers, mapping) {
+export function saveMapping(areaId, headers, mapping) {
   const signature = [...headers].sort().join('|');
   db.prepare(`
-    INSERT INTO field_mappings (dataset, mapping_json, source_columns_signature, updated_at)
+    INSERT INTO field_mappings (area_id, mapping_json, source_columns_signature, updated_at)
     VALUES (?, ?, ?, datetime('now'))
-    ON CONFLICT(dataset) DO UPDATE SET mapping_json = excluded.mapping_json,
+    ON CONFLICT(area_id) DO UPDATE SET mapping_json = excluded.mapping_json,
       source_columns_signature = excluded.source_columns_signature, updated_at = datetime('now')
-  `).run(dataset, JSON.stringify(mapping), signature);
+  `).run(areaId, JSON.stringify(mapping), signature);
 }
 
-function getOrCreateStore(dataset, name) {
+function getOrCreateStore(areaId, name) {
   const trimmed = String(name).trim();
-  let store = db.prepare('SELECT * FROM stores WHERE dataset = ? AND lower(name) = lower(?)').get(dataset, trimmed);
+  let store = db.prepare('SELECT * FROM stores WHERE area_id = ? AND lower(name) = lower(?)').get(areaId, trimmed);
   let created = false;
   if (!store) {
-    const info = db.prepare('INSERT INTO stores (dataset, name) VALUES (?, ?)').run(dataset, trimmed);
+    const info = db.prepare('INSERT INTO stores (area_id, name) VALUES (?, ?)').run(areaId, trimmed);
     store = db.prepare('SELECT * FROM stores WHERE id = ?').get(info.lastInsertRowid);
     created = true;
   }
   return { store, created };
 }
 
-function upsertDriverDefinition(dataset, key, label) {
-  const existing = db.prepare('SELECT id FROM driver_definitions WHERE dataset = ? AND key = ?').get(dataset, key);
+function upsertDriverDefinition(areaId, key, label) {
+  const existing = db.prepare('SELECT id FROM driver_definitions WHERE area_id = ? AND key = ?').get(areaId, key);
   if (!existing) {
-    const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM driver_definitions WHERE dataset = ?').get(dataset).m;
-    db.prepare('INSERT INTO driver_definitions (dataset, key, label, sort_order) VALUES (?, ?, ?, ?)')
-      .run(dataset, key, label, maxOrder + 1);
+    const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM driver_definitions WHERE area_id = ?').get(areaId).m;
+    db.prepare('INSERT INTO driver_definitions (area_id, key, label, sort_order) VALUES (?, ?, ?, ?)')
+      .run(areaId, key, label, maxOrder + 1);
   }
 }
 
-export function performImport({ dataset, filename, headers, rows, mapping }) {
-  saveMapping(dataset, headers, mapping);
+export function performImport({ areaId, filename, headers, rows, mapping, enteredBy }) {
+  saveMapping(areaId, headers, mapping);
 
   const driverColumns = Object.entries(mapping).filter(([, m]) => m.field === 'driver');
   for (const [, m] of driverColumns) {
-    upsertDriverDefinition(dataset, m.driverKey, m.driverLabel || m.driverKey);
+    upsertDriverDefinition(areaId, m.driverKey, m.driverLabel || m.driverKey);
   }
 
   let storesCreated = 0;
@@ -109,21 +109,23 @@ export function performImport({ dataset, filename, headers, rows, mapping }) {
 
   const findExisting = db.prepare('SELECT id FROM sales_records WHERE store_id = ? AND year = ? AND month = ?');
   const insertSales = db.prepare(`
-    INSERT INTO sales_records (store_id, dataset, year, month, sales_amount, target_amount, drivers_json, import_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    INSERT INTO sales_records (store_id, year, month, sales_date, sales_amount, target_amount, drivers_json, import_id, entered_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     ON CONFLICT(store_id, year, month) DO UPDATE SET
+      sales_date = excluded.sales_date,
       sales_amount = excluded.sales_amount,
       target_amount = excluded.target_amount,
       drivers_json = excluded.drivers_json,
       import_id = excluded.import_id,
+      entered_by = excluded.entered_by,
       updated_at = datetime('now')
   `);
 
   const importRow = db.prepare(`
-    INSERT INTO imports (dataset, filename, uploaded_at, rows_added, rows_updated, rows_failed, errors_json)
+    INSERT INTO imports (area_id, filename, uploaded_at, rows_added, rows_updated, rows_failed, errors_json)
     VALUES (?, ?, datetime('now'), 0, 0, 0, '[]')
   `);
-  const importInfo = importRow.run(dataset, filename);
+  const importInfo = importRow.run(areaId, filename);
   const importId = importInfo.lastInsertRowid;
 
   const runAll = () => {
@@ -167,11 +169,12 @@ export function performImport({ dataset, filename, headers, rows, mapping }) {
         if (!month) throw new Error('Missing or unrecognized month');
         if (salesAmount === null) throw new Error('Missing or unrecognized sales amount');
 
-        const { store, created } = getOrCreateStore(dataset, storeName);
+        const { store, created } = getOrCreateStore(areaId, storeName);
         if (created) storesCreated += 1;
 
         const existing = findExisting.get(store.id, year, month);
-        insertSales.run(store.id, dataset, year, month, salesAmount, targetAmount, JSON.stringify(drivers), importId);
+        const salesDate = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-01`;
+        insertSales.run(store.id, year, month, salesDate, salesAmount, targetAmount, JSON.stringify(drivers), importId, enteredBy ?? null);
         if (existing) rowsUpdated += 1;
         else rowsAdded += 1;
       } catch (err) {
