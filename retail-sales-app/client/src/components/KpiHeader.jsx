@@ -18,11 +18,11 @@ export default function KpiHeader({ title, data, loading, onChangePeriod }) {
         <h2 style={{ margin: 0 }}>{title}</h2>
         {onChangePeriod && (
           <div style={{ display: 'flex', gap: 10 }}>
-            <select value={year} onChange={(e) => onChangePeriod({ year: Number(e.target.value), month })}>
+            <select style={{ width: 'auto', minWidth: 90 }} value={year} onChange={(e) => onChangePeriod({ year: Number(e.target.value), month })}>
               {availableYears.length === 0 && <option value={year}>{year}</option>}
               {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
-            <select value={month} onChange={(e) => onChangePeriod({ year, month: Number(e.target.value) })}>
+            <select style={{ width: 'auto', minWidth: 130 }} value={month} onChange={(e) => onChangePeriod({ year, month: Number(e.target.value) })}>
               {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
             </select>
           </div>

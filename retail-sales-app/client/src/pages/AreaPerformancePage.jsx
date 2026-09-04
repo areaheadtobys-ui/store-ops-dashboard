@@ -60,10 +60,11 @@ export default function AreaPerformancePage() {
           </div>
           {data && (
             <div style={{ display: 'flex', gap: 10 }}>
-              <select value={period?.year} onChange={(e) => setPeriod({ year: Number(e.target.value), month: period.month })}>
+              <select style={{ width: 'auto', minWidth: 90 }} value={period?.year} onChange={(e) => setPeriod({ year: Number(e.target.value), month: period.month })}>
+                {data.availableYears.length === 0 && <option value={period.year}>{period.year}</option>}
                 {data.availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
-              <select value={period?.month} onChange={(e) => setPeriod({ year: period.year, month: Number(e.target.value) })}>
+              <select style={{ width: 'auto', minWidth: 130 }} value={period?.month} onChange={(e) => setPeriod({ year: period.year, month: Number(e.target.value) })}>
                 {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
               </select>
             </div>
