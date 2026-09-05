@@ -135,6 +135,7 @@ Pick a **Scope** (Company or one Area), a **Ranking** (Top 5/10, Bottom 5/10), a
 Log sales day-by-day instead of importing a monthly file: pick a Year/Month, set an optional **monthly target** once, then fill in each day's sales amount (autosaves on blur). Shows running MTD Sales, % vs Target, and days entered out of the month. A Store Supervisor is locked to their own store; Area Supervisors and the Super Admin can pick any store in the selected Area. **Importing a monthly file for a store/month replaces whatever's here** (see below) — the two entry methods are not meant to be mixed for the same store in the same month.
 
 ### Import Data (per Area — select an Area first)
+0. Not sure of the format? Click **Download template (.csv)** for a starter file with the right headers and one example row.
 1. Click **Choose File** and upload a monthly Excel/CSV file.
 2. **Map your columns**: every detected column, a sample value, and a dropdown to map it to Store Name, Year, Month (or a single Date column instead), Sales Amount, Target Amount, or a Driver Metric (name it anything — footfall, transactions, basket size, ...).
 3. **Import data** → an **Import complete** summary: rows added, rows updated, rows that failed and why, and how many stores were auto-created from names in the sheet.
