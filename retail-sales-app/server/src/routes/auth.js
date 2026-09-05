@@ -6,7 +6,10 @@ const router = Router();
 
 const SESSION_DAYS = 30;
 const COOKIE_NAME = 'rsa_session';
-const ROLES = ['super_admin', 'area_supervisor', 'store_supervisor'];
+const ROLES = ['super_admin', 'area_supervisor', 'store_supervisor', 'pending'];
+// Restricts self-service sign-up (not the Users-page admin flow) to a company
+// email domain. Empty/unset allows any domain — set this per deployment.
+const SIGNUP_EMAIL_DOMAIN = (process.env.SIGNUP_EMAIL_DOMAIN || 'tobys.com').toLowerCase();
 
 export function parseCookies(req) {
   const header = req.headers.cookie;
@@ -65,7 +68,12 @@ export function isAuthenticated(req) {
 router.get('/status', (req, res) => {
   const hasUsers = !!db.prepare('SELECT id FROM users LIMIT 1').get();
   const user = getRequestUser(req);
-  res.json({ hasUsers, authenticated: !!user, user: sanitizeUser(user) });
+  res.json({
+    hasUsers,
+    authenticated: !!user,
+    user: sanitizeUser(user),
+    signupEmailDomain: SIGNUP_EMAIL_DOMAIN || null,
+  });
 });
 
 // First-run only: creates the initial Super Admin account. Once any user
@@ -91,6 +99,41 @@ router.post('/setup', (req, res) => {
 
   createSession(res, req, info.lastInsertRowid);
   res.json({ ok: true });
+});
+
+// Self-service sign-up (distinct from /setup, which only ever creates the
+// first Super Admin). Anyone with a matching-domain email can create their
+// own account, but it starts as role 'pending' — no area/store, no access
+// to anything (see rbac.js: allowedAreaIds returns [] for any role other
+// than the three assigned ones) — until a Super Admin assigns them a real
+// role from the Users page.
+router.post('/signup', (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+  const trimmedEmail = String(email || '').trim().toLowerCase();
+  if (!trimmedEmail || !trimmedEmail.includes('@')) return res.status(400).json({ error: 'A valid email is required' });
+  if (SIGNUP_EMAIL_DOMAIN && !trimmedEmail.endsWith(`@${SIGNUP_EMAIL_DOMAIN}`)) {
+    return res.status(400).json({ error: `Only @${SIGNUP_EMAIL_DOMAIN} addresses can sign up` });
+  }
+  if (!password || password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = hashPassword(password, salt);
+  try {
+    const info = db.prepare(`
+      INSERT INTO users (name, email, password_hash, salt, role, status)
+      VALUES (?, ?, ?, ?, 'pending', 'active')
+    `).run(name.trim(), trimmedEmail, hash, salt);
+    createSession(res, req, info.lastInsertRowid);
+    res.json({ ok: true });
+  } catch (err) {
+    if (String(err.message).includes('UNIQUE')) {
+      return res.status(409).json({ error: 'An account with this email already exists' });
+    }
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.post('/login', (req, res) => {

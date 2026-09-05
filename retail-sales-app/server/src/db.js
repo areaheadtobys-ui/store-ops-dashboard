@@ -55,6 +55,17 @@ if (!migratingTables.has('sales_records') && tableExists('sales_records')) {
   }
 }
 
+// --- Migration adding the 'pending' role (self-service sign-up, assigned
+// by a Super Admin afterwards) to users' CHECK constraint.
+let migratingUsersRole = false;
+if (!migratingTables.has('users') && tableExists('users')) {
+  const sql = db.prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'`).get().sql;
+  if (!/'pending'/.test(sql)) {
+    db.exec('ALTER TABLE users RENAME TO legacy_users_role');
+    migratingUsersRole = true;
+  }
+}
+
 // --- Core schema -----------------------------------------------------------
 // Organizational hierarchy: COMPANY -> AREA -> STORE -> (STORE SUPERVISOR) -> sales.
 // Areas are configurable master data (not hard-coded) so new areas can be
@@ -92,7 +103,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   salt TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('super_admin', 'area_supervisor', 'store_supervisor')),
+  role TEXT NOT NULL CHECK (role IN ('super_admin', 'area_supervisor', 'store_supervisor', 'pending')),
   area_id INTEGER REFERENCES areas(id),
   store_id INTEGER REFERENCES stores(id),
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
@@ -264,6 +275,15 @@ if (migratingSalesGrain) {
     FROM legacy_sales_records_monthly
   `);
   db.exec('DROP TABLE legacy_sales_records_monthly');
+}
+
+if (migratingUsersRole) {
+  db.exec(`
+    INSERT INTO users (id, name, email, password_hash, salt, role, area_id, store_id, status, created_at, updated_at)
+    SELECT id, name, email, password_hash, salt, role, area_id, store_id, status, created_at, updated_at
+    FROM legacy_users_role
+  `);
+  db.exec('DROP TABLE legacy_users_role');
 }
 
 db.exec('PRAGMA foreign_keys = ON');
