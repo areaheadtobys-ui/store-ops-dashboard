@@ -161,6 +161,8 @@ Per-Area checkboxes to show/hide each dashboard card and each of the Sales Trend
 ### Stores
 Add a store (name + optional code + Area), deactivate a closed store (keeps its sales history, just stops it showing in filters/new imports as active), reactivate, or remove entirely (only allowed if it has no sales history — otherwise it's deactivated instead, so historical data is never silently lost).
 
+Super Admins viewing "Company" also get a **bulk import**: paste one store per line as `AREA,CODE,NAME` (e.g. `CENTRAL,MEG,MEGAMALL`) to onboard a whole store list in one action instead of one-at-a-time. Existing store codes are skipped, so re-pasting the same list is harmless.
+
 ### Users (Super Admin only)
 Create accounts and assign each one a role — Super Admin, Area Supervisor (+ an Area), or Store Supervisor (+ a Store) — deactivate or remove them.
 

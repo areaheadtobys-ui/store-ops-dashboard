@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useArea } from '../context/AreaContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 import { api } from '../lib/api.js';
 
 export default function StoresPage() {
   const { areaId, areas, selectedArea, isCompanyView } = useArea();
+  const { user } = useAuth();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -12,6 +14,9 @@ export default function StoresPage() {
   const [newCode, setNewCode] = useState('');
   const [newAreaId, setNewAreaId] = useState('');
   const [adding, setAdding] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [bulkResult, setBulkResult] = useState(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   function load() {
     setLoading(true);
@@ -53,6 +58,31 @@ export default function StoresPage() {
     load();
   }
 
+  async function bulkImport(e) {
+    e.preventDefault();
+    setBulkResult(null);
+    const rows = bulkText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [areaCode, code, ...nameParts] = line.split(',');
+        return { areaCode: (areaCode || '').trim(), code: (code || '').trim(), name: nameParts.join(',').trim() };
+      });
+    if (rows.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const result = await api.post('/stores/bulk-import', { rows });
+      setBulkResult(result);
+      setBulkText('');
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   return (
     <div>
       <div className="card">
@@ -85,6 +115,38 @@ export default function StoresPage() {
         </form>
         {error && <div className="banner error" style={{ marginTop: 12 }}>{error}</div>}
       </div>
+
+      {user?.role === 'super_admin' && isCompanyView && (
+        <div className="card">
+          <h3>Bulk import stores</h3>
+          <p className="text-muted">
+            Paste one store per line as <code>AREA,CODE,NAME</code> (area codes: {areas.map((a) => a.area_code).join(', ')}).
+            Existing store codes are skipped, so it's safe to paste the same list again.
+          </p>
+          <form onSubmit={bulkImport}>
+            <textarea
+              rows={8}
+              style={{ width: '100%', fontFamily: 'monospace' }}
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              placeholder={'CENTRAL,MEG,MEGAMALL\nNORTH,BAG,SM BAGUIO\nSOUTH,MOA,MALL OF ASIA'}
+            />
+            <button className="btn" type="submit" disabled={bulkBusy || !bulkText.trim()} style={{ marginTop: 10 }}>
+              {bulkBusy ? 'Importing…' : 'Import'}
+            </button>
+          </form>
+          {bulkResult && (
+            <div className="banner" style={{ marginTop: 12 }}>
+              Created {bulkResult.created}, skipped {bulkResult.skipped} (already existed).
+              {bulkResult.errors.length > 0 && (
+                <ul>
+                  {bulkResult.errors.map((e, i) => <li key={i}>{e.reason}: {JSON.stringify(e.row)}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="card">
         {loading ? (
