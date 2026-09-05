@@ -6,6 +6,7 @@ import { useAuth, ROLE_LABELS } from './context/AuthContext.jsx';
 import { FiltersProvider } from './context/FiltersContext.jsx';
 import { WidgetsProvider } from './context/WidgetsContext.jsx';
 import UploadPage from './pages/UploadPage.jsx';
+import DailyEntryPage from './pages/DailyEntryPage.jsx';
 import DashboardHome from './pages/DashboardHome.jsx';
 import TrendPage from './pages/TrendPage.jsx';
 import ComparisonPage from './pages/ComparisonPage.jsx';
@@ -40,6 +41,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<DashboardHome />} />
             <Route path="/upload" element={<UploadPage />} />
+            <Route path="/daily-entry" element={<DailyEntryPage />} />
             <Route path="/trend" element={<TrendPage />} />
             <Route path="/comparison" element={<ComparisonPage />} />
             <Route path="/drivers" element={<DriversComparisonPage />} />

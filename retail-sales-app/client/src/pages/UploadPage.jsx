@@ -117,7 +117,7 @@ export default function UploadPage() {
     <div>
       <div className="card">
         <h2>Import monthly sales data</h2>
-        <p>Upload your Excel file for <strong>{selectedArea?.area_name || 'this Area'}</strong>. Re-uploading a month you've already imported will update those rows, not duplicate them.</p>
+        <p>Upload your Excel file for <strong>{selectedArea?.area_name || 'this Area'}</strong>. Importing a month replaces any data already recorded for that store that month — including entries made on the Daily Entry page — with the totals from this file, so it never double-counts.</p>
         <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} disabled={busy} />
       </div>
 

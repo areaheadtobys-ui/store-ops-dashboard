@@ -10,6 +10,7 @@ export default function NavTabs() {
 
   const tabs = [
     { to: '/', label: isCompanyView ? 'Company Dashboard' : 'Dashboard', end: true },
+    !isCompanyView && { to: '/daily-entry', label: 'Daily Entry' },
     !isCompanyView && { to: '/upload', label: 'Import Data' },
     !isCompanyView && { to: '/trend', label: 'Sales Trend', widgetKey: 'trend' },
     !isCompanyView && { to: '/comparison', label: 'YoY Comparison', widgetKey: 'yoy_sales' },

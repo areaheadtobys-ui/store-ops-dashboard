@@ -122,11 +122,14 @@ Compares Central/North/South side by side (MTD Sales, LY, Target, % vs LY, % vs 
 ### Top & Bottom Performers page
 Pick a **Scope** (Company or one Area), a **Ranking** (Top 5/10, Bottom 5/10), and a **Metric** (Sales, Growth %, Target Achievement %, Projected Achievement %) to rank stores from every Area at once (when scope is Company) or just one.
 
+### Daily Entry (per Area — select a store)
+Log sales day-by-day instead of importing a monthly file: pick a Year/Month, set an optional **monthly target** once, then fill in each day's sales amount (autosaves on blur). Shows running MTD Sales, % vs Target, and days entered out of the month. A Store Supervisor is locked to their own store; Area Supervisors and the Super Admin can pick any store in the selected Area. **Importing a monthly file for a store/month replaces whatever's here** (see below) — the two entry methods are not meant to be mixed for the same store in the same month.
+
 ### Import Data (per Area — select an Area first)
 1. Click **Choose File** and upload a monthly Excel/CSV file.
 2. **Map your columns**: every detected column, a sample value, and a dropdown to map it to Store Name, Year, Month (or a single Date column instead), Sales Amount, Target Amount, or a Driver Metric (name it anything — footfall, transactions, basket size, ...).
 3. **Import data** → an **Import complete** summary: rows added, rows updated, rows that failed and why, and how many stores were auto-created from names in the sheet.
-4. **Re-upload the same month** — rows are updated in place (matched on store + year + month), never duplicated.
+4. **Re-upload the same month** (or a month with Daily Entry rows) — the store's data for that month is replaced with the file's totals, never duplicated or double-counted.
 5. Next time you upload with the same column headers, your mapping is remembered automatically ("Using remembered mapping" badge); a changed layout prompts you to re-map.
 6. **Recent imports** at the bottom is a running log per Area. If you uploaded the wrong file, click **Delete** next to it — this removes the rows it added, unless a later upload already corrected them (those stay, since they belong to the newer import now).
 
@@ -155,9 +158,13 @@ Create accounts and assign each one a role — Super Admin, Area Supervisor (+ a
 ### Areas (Super Admin only)
 Add a new Area (code + name), rename one, or deactivate one. No code change needed to grow past Central/North/South.
 
-## A note on "daily" sales data
+## How daily entry and monthly import coexist
 
-The organizational spec this app follows describes a Store Supervisor entering **daily** sales, landing in a `sales_date` / `entered_by`-carrying table. This build keeps the app's existing **monthly Excel-import** workflow — its only data-entry path today — rather than also building a new manual daily-entry UI. The sales table does carry `sales_date` (the 1st of the imported month) and `entered_by` (who ran the import) so a real daily-entry feature can be added later without another schema migration; "MTD" and "Projected EOM" figures on the dashboards are computed from that monthly data (prorated by calendar days elapsed for the current month), documented in `server/src/services/metrics.js`.
+`sales_records` is one row per store per **calendar day** (`UNIQUE(store_id, sales_date)`), not one row per month. Daily Entry writes exactly the days you fill in; a monthly Excel import writes a single row dated the 1st of the imported month. A month's **target** always lives on that month's day-1 row, so every dashboard/ranking query that sums `target_amount` across a month keeps working correctly regardless of how many daily rows exist alongside it.
+
+**Importing a month is authoritative for that store/month**: it deletes every row already there (bulk or daily) before writing the file's total, so re-uploading a month with existing Daily Entry rows replaces them rather than double-counting on top of them. In practice, pick one method per store per month — don't bulk-import a month you're also entering daily, since whichever you do last wins.
+
+"MTD" and "Projected EOM" figures on the dashboards are the sum of whatever `sales_records` rows exist for the period (prorated by calendar days elapsed for the current month when projecting) — see `server/src/services/metrics.js`.
 
 ## Known limitation
 
@@ -169,7 +176,6 @@ A security advisory exists against the `xlsx` (SheetJS) npm package with no upst
 
 ## Non-goals (by design, v1)
 
-- No manual daily sales entry UI yet — see "A note on daily sales data" above; the schema is ready for it, the entry form isn't built.
 - No cloud sync — the SQLite file on your machine is the only copy. Back it up (`server/data/retail-sales.db`) if that matters to you.
 
 ## Upgrading from an older copy of this app
@@ -183,3 +189,8 @@ becomes **Central**, **Franchise** becomes **North** — reassign any store to
 a different Area afterwards from the Stores page), and the old shared
 password is dropped in favor of the Super Admin setup screen. This runs once
 automatically; nothing to do beyond starting the server as usual.
+
+A copy from just before Daily Entry shipped (Area model already in place, but
+`sales_records` still one row per store per month) migrates the same way,
+automatically: existing rows already satisfy the new one-row-per-day
+constraint as-is, so this is a pure rename+copy with no data changes.

@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { resolveAreaScope, resolveStoreScope } from '../rbac.js';
+import { resolveAreaScope, resolveStoreScope, canAccessStore } from '../rbac.js';
+import { daysInMonth } from '../services/metrics.js';
 
 const router = Router();
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function buildFilters(user, query) {
   const { areaId, ok } = resolveAreaScope(user, query.areaId);
@@ -104,6 +107,97 @@ router.get('/top-performers', (req, res) => {
   results.sort((a, b) => b.comparePct - a.comparePct);
 
   res.json({ mode, monthFrom, monthTo, results: results.slice(0, limit) });
+});
+
+// --- Daily Entry: manual per-day sales, alongside (not instead of) the
+// monthly Excel import. See sales_records' comment in db.js for how the two
+// coexist: a month's target lives on that month's day-1 row, so existing
+// SUM(target_amount)-based reporting needs no changes.
+
+router.get('/daily', (req, res) => {
+  const { storeId, year: rawYear, month: rawMonth } = req.query;
+  if (!storeId || !rawYear || !rawMonth) return res.status(400).json({ error: 'storeId, year, and month are required' });
+  if (!canAccessStore(req.user, storeId)) return res.status(403).json({ error: 'Not permitted for this store' });
+
+  const year = Number(rawYear);
+  const month = Number(rawMonth);
+  const rows = db.prepare(`
+    SELECT sales_date, sales_amount, target_amount, drivers_json
+    FROM sales_records WHERE store_id = ? AND year = ? AND month = ?
+    ORDER BY sales_date
+  `).all(storeId, year, month);
+
+  const dayOne = rows.find((r) => r.sales_date.endsWith('-01'));
+  res.json({
+    year,
+    month,
+    daysInMonth: daysInMonth(year, month),
+    target: dayOne ? dayOne.target_amount : null,
+    days: rows.map((r) => ({
+      date: r.sales_date,
+      day: Number(r.sales_date.slice(-2)),
+      salesAmount: r.sales_amount,
+      drivers: JSON.parse(r.drivers_json || '{}'),
+    })),
+  });
+});
+
+router.put('/daily', (req, res) => {
+  const { storeId, date, salesAmount, drivers } = req.body;
+  if (!storeId || !date || salesAmount === undefined || salesAmount === null) {
+    return res.status(400).json({ error: 'storeId, date, and salesAmount are required' });
+  }
+  if (!DATE_RE.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+  if (!canAccessStore(req.user, storeId)) return res.status(403).json({ error: 'Not permitted for this store' });
+
+  const amount = Number(salesAmount);
+  if (!Number.isFinite(amount) || amount < 0) return res.status(400).json({ error: 'salesAmount must be a non-negative number' });
+
+  const [year, month] = date.split('-').map(Number);
+  db.prepare(`
+    INSERT INTO sales_records (store_id, year, month, sales_date, sales_amount, target_amount, drivers_json, entered_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, NULL, ?, ?, datetime('now'), datetime('now'))
+    ON CONFLICT(store_id, sales_date) DO UPDATE SET
+      sales_amount = excluded.sales_amount,
+      drivers_json = excluded.drivers_json,
+      entered_by = excluded.entered_by,
+      updated_at = datetime('now')
+  `).run(storeId, year, month, date, amount, JSON.stringify(drivers || {}), req.user.id);
+
+  const saved = db.prepare('SELECT sales_date, sales_amount, target_amount, drivers_json FROM sales_records WHERE store_id = ? AND sales_date = ?').get(storeId, date);
+  res.json({ date: saved.sales_date, salesAmount: saved.sales_amount, drivers: JSON.parse(saved.drivers_json || '{}') });
+});
+
+router.delete('/daily', (req, res) => {
+  const { storeId, date } = req.query;
+  if (!storeId || !date) return res.status(400).json({ error: 'storeId and date are required' });
+  if (!canAccessStore(req.user, storeId)) return res.status(403).json({ error: 'Not permitted for this store' });
+  db.prepare('DELETE FROM sales_records WHERE store_id = ? AND sales_date = ?').run(storeId, date);
+  res.json({ deleted: true });
+});
+
+router.put('/daily/target', (req, res) => {
+  const { storeId, year: rawYear, month: rawMonth, targetAmount } = req.body;
+  if (!storeId || !rawYear || !rawMonth) return res.status(400).json({ error: 'storeId, year, and month are required' });
+  if (!canAccessStore(req.user, storeId)) return res.status(403).json({ error: 'Not permitted for this store' });
+
+  const year = Number(rawYear);
+  const month = Number(rawMonth);
+  const target = targetAmount === null || targetAmount === '' || targetAmount === undefined ? null : Number(targetAmount);
+  if (target !== null && (!Number.isFinite(target) || target < 0)) {
+    return res.status(400).json({ error: 'targetAmount must be a non-negative number' });
+  }
+  const dayOneDate = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-01`;
+
+  db.prepare(`
+    INSERT INTO sales_records (store_id, year, month, sales_date, sales_amount, target_amount, drivers_json, entered_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 0, ?, '{}', ?, datetime('now'), datetime('now'))
+    ON CONFLICT(store_id, sales_date) DO UPDATE SET
+      target_amount = excluded.target_amount,
+      updated_at = datetime('now')
+  `).run(storeId, year, month, dayOneDate, target, req.user.id);
+
+  res.json({ year, month, target });
 });
 
 export default router;

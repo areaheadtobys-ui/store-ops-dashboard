@@ -39,6 +39,22 @@ const migratingSessions = tableExists('sessions') && !columnNames('sessions').in
 if (migratingSessions) db.exec('DROP TABLE sessions'); // shared-password sessions are invalid under per-user auth anyway
 if (tableExists('app_auth')) db.exec('DROP TABLE app_auth');
 
+// --- Migration from one-row-per-month to one-row-per-day sales_records
+// (adds real daily manual entry on top of the existing monthly Excel
+// import). Only needed for a database that's past the dataset/Area
+// migration above but still has the old UNIQUE(store_id, year, month) —
+// every existing row already satisfies the new UNIQUE(store_id, sales_date)
+// as-is (one row per store/month, dated the 1st), so this is a pure
+// rename+copy, no data reshaping.
+let migratingSalesGrain = false;
+if (!migratingTables.has('sales_records') && tableExists('sales_records')) {
+  const sql = db.prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'sales_records'`).get().sql;
+  if (/UNIQUE\s*\(\s*store_id\s*,\s*year\s*,\s*month\s*\)/i.test(sql)) {
+    db.exec('ALTER TABLE sales_records RENAME TO legacy_sales_records_monthly');
+    migratingSalesGrain = true;
+  }
+}
+
 // --- Core schema -----------------------------------------------------------
 // Organizational hierarchy: COMPANY -> AREA -> STORE -> (STORE SUPERVISOR) -> sales.
 // Areas are configurable master data (not hard-coded) so new areas can be
@@ -113,11 +129,13 @@ CREATE TABLE IF NOT EXISTS imports (
   errors_json TEXT
 );
 
--- Monthly sales fact table. The organizational spec describes daily entry
--- (sales_date, entered_by) for a future manual data-entry feature; this
--- build keeps the existing monthly Excel-import grain (the app's only entry
--- path today) but carries both columns now so that feature can be added
--- later without another migration. sales_date is the 1st of (year, month).
+-- Sales fact table, one row per store per calendar day. A monthly Excel
+-- import writes a single row dated the 1st of the imported month (and
+-- replaces any other rows already present for that store/month — see
+-- importService.js); manual Daily Entry writes one row per real day. A
+-- month's target is carried on that month's day-1 row, so every place that
+-- aggregates SUM(target_amount) across a month keeps working unchanged
+-- regardless of how many daily rows exist alongside it.
 CREATE TABLE IF NOT EXISTS sales_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
@@ -131,8 +149,10 @@ CREATE TABLE IF NOT EXISTS sales_records (
   entered_by INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE (store_id, year, month)
+  UNIQUE (store_id, sales_date)
 );
+
+CREATE INDEX IF NOT EXISTS idx_sales_records_store_period ON sales_records (store_id, year, month);
 
 CREATE TABLE IF NOT EXISTS remarks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -235,6 +255,15 @@ if (migratingTables.size > 0) {
   for (const table of migratingTables) {
     db.exec(`DROP TABLE legacy_${table}`);
   }
+}
+
+if (migratingSalesGrain) {
+  db.exec(`
+    INSERT INTO sales_records (id, store_id, year, month, sales_date, sales_amount, target_amount, drivers_json, import_id, entered_by, created_at, updated_at)
+    SELECT id, store_id, year, month, sales_date, sales_amount, target_amount, drivers_json, import_id, entered_by, created_at, updated_at
+    FROM legacy_sales_records_monthly
+  `);
+  db.exec('DROP TABLE legacy_sales_records_monthly');
 }
 
 db.exec('PRAGMA foreign_keys = ON');
