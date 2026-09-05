@@ -58,6 +58,19 @@ export default function StoresPage() {
     load();
   }
 
+  function downloadTemplate() {
+    const header = 'AREA,CODE,NAME';
+    const example = areas.length > 0 ? `${areas[0].area_code},MEG,MEGAMALL` : 'CENTRAL,MEG,MEGAMALL';
+    const csv = `${header}\n${example}\n`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'store-import-template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function bulkImport(e) {
     e.preventDefault();
     setBulkResult(null);
@@ -68,7 +81,9 @@ export default function StoresPage() {
       .map((line) => {
         const [areaCode, code, ...nameParts] = line.split(',');
         return { areaCode: (areaCode || '').trim(), code: (code || '').trim(), name: nameParts.join(',').trim() };
-      });
+      })
+      // Tolerate a header row (from the downloaded template, or a hand-typed one).
+      .filter((row) => !(row.areaCode.toUpperCase() === 'AREA' && row.code.toUpperCase() === 'CODE'));
     if (rows.length === 0) return;
     setBulkBusy(true);
     try {
@@ -121,7 +136,10 @@ export default function StoresPage() {
           <h3>Bulk import stores</h3>
           <p className="text-muted">
             Paste one store per line as <code>AREA,CODE,NAME</code> (area codes: {areas.map((a) => a.area_code).join(', ')}).
-            Existing store codes are skipped, so it's safe to paste the same list again.
+            Existing store codes are skipped, so it's safe to paste the same list again.{' '}
+            <button type="button" className="btn secondary" style={{ padding: '2px 10px', fontSize: 13 }} onClick={downloadTemplate}>
+              Download template (.csv)
+            </button>
           </p>
           <form onSubmit={bulkImport}>
             <textarea
