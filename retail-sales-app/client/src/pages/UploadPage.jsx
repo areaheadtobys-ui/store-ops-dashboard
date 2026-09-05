@@ -34,6 +34,19 @@ export default function UploadPage() {
     api.get(`/imports?areaId=${areaId}`).then(setHistory).catch(() => {});
   }
 
+  function downloadTemplate() {
+    const header = 'Store Name,Year,Month,Sales Amount,Target Amount,Footfall,Transactions,Average Ticket,Conversion Rate';
+    const example = 'MEGAMALL,2026,January,7303823.55,7479999.95,15551,3025,2414.49,0.1945';
+    const csv = `${header}\n${example}\n`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'sales-import-template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function handleFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -118,6 +131,13 @@ export default function UploadPage() {
       <div className="card">
         <h2>Import monthly sales data</h2>
         <p>Upload your Excel file for <strong>{selectedArea?.area_name || 'this Area'}</strong>. Importing a month replaces any data already recorded for that store that month — including entries made on the Daily Entry page — with the totals from this file, so it never double-counts.</p>
+        <p className="text-muted">
+          Not sure of the format?{' '}
+          <button type="button" className="btn secondary" style={{ padding: '2px 10px', fontSize: 13 }} onClick={downloadTemplate}>
+            Download template (.csv)
+          </button>
+          {' '}— Store Name, Year, Month, and Sales Amount are required; Target Amount and any driver metrics (footfall, transactions, etc.) are optional and can be named however you like.
+        </p>
         <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} disabled={busy} />
       </div>
 
