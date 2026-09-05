@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { resolveAreaScope, canAccessArea } from '../rbac.js';
+import { resolveAreaScope, canAccessArea, requireSuperAdmin } from '../rbac.js';
 
 const router = Router();
 
@@ -52,6 +52,48 @@ router.post('/', (req, res) => {
     }
     res.status(500).json({ error: err.message });
   }
+});
+
+// Bulk-create stores from pasted rows, e.g. onboarding a real store list in
+// one action instead of one-at-a-time through the "Add store" form.
+router.post('/bulk-import', requireSuperAdmin, (req, res) => {
+  const { rows } = req.body;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return res.status(400).json({ error: 'rows must be a non-empty array' });
+  }
+
+  const areaByCode = new Map(
+    db.prepare('SELECT id, area_code FROM areas').all().map((a) => [a.area_code.toUpperCase(), a.id]),
+  );
+  const insert = db.prepare('INSERT INTO stores (area_id, name, code) VALUES (?, ?, ?)');
+  const findByCode = db.prepare('SELECT id FROM stores WHERE code = ?');
+
+  let created = 0;
+  let skipped = 0;
+  const errors = [];
+
+  for (const row of rows) {
+    const areaCode = String(row.areaCode || '').trim().toUpperCase();
+    const code = String(row.code || '').trim();
+    const name = String(row.name || '').trim();
+    if (!areaCode || !code || !name) {
+      errors.push({ row, reason: 'areaCode, code, and name are all required' });
+      continue;
+    }
+    const areaId = areaByCode.get(areaCode);
+    if (!areaId) {
+      errors.push({ row, reason: `Unknown area code "${areaCode}"` });
+      continue;
+    }
+    if (findByCode.get(code)) {
+      skipped += 1;
+      continue;
+    }
+    insert.run(areaId, name, code);
+    created += 1;
+  }
+
+  res.status(201).json({ created, skipped, errors });
 });
 
 router.patch('/:id', (req, res) => {
