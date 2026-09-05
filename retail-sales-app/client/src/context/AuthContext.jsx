@@ -20,6 +20,11 @@ export function AuthProvider({ children }) {
     await refresh();
   }
 
+  async function signup({ name, email, password }) {
+    await api.post('/auth/signup', { name, email, password });
+    await refresh();
+  }
+
   async function login({ email, password }) {
     await api.post('/auth/login', { email, password });
     await refresh();
@@ -31,7 +36,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ status, user: status?.user || null, loading, setupSuperAdmin, login, logout, refresh }}>
+    <AuthContext.Provider value={{ status, user: status?.user || null, loading, setupSuperAdmin, signup, login, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );
@@ -47,4 +52,5 @@ export const ROLE_LABELS = {
   super_admin: 'Super Admin',
   area_supervisor: 'Area Supervisor',
   store_supervisor: 'Store Supervisor',
+  pending: 'Pending (unassigned)',
 };

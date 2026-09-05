@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import AreaSwitcher from './components/AreaSwitcher.jsx';
 import NavTabs from './components/NavTabs.jsx';
 import { useArea } from './context/AreaContext.jsx';
@@ -51,6 +51,10 @@ export default function App() {
             {user?.role === 'super_admin' && <Route path="/users" element={<UsersPage />} />}
             {user?.role === 'super_admin' && <Route path="/areas" element={<AreasPage />} />}
             <Route path="/settings" element={<SettingsPage />} />
+            {/* A role-restricted URL left in the address bar (e.g. a Store
+                Supervisor logging back in on /users) has no matching Route
+                above — send them home instead of a blank page. */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </FiltersProvider>
       </WidgetsProvider>

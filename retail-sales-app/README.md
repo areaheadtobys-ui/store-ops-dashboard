@@ -28,10 +28,19 @@ reporting and per-Area reporting come from the same rows.
   sales, dashboard, and reports. Lands on their Area's dashboard automatically.
 - **Store Supervisor** — assigned to one Store; sees only that store's data.
   Lands on their store's (Area-scoped) dashboard, filtered to just that store.
+- **Pending** — a self-signed-up account (see below) with no Area/Store yet.
+  Sees nothing but a "waiting for assignment" screen until a Super Admin
+  assigns them a real role from the Users page.
 
 A signed-in user can never widen their own scope through the API — every
 route re-validates the requested Area/Store against the caller's role
 server-side, not just in the UI.
+
+### Getting an account
+
+Two ways in:
+1. **A Super Admin creates your account directly** from the Users page (name, email, password, role, Area/Store) — you're immediately usable with whatever they assigned.
+2. **You sign up yourself** from the "Create account" tab on the sign-in screen, using your own email and password. This only requires an email on the configured company domain (`SIGNUP_EMAIL_DOMAIN` env var, default `tobys.com` — set it per deployment, or unset it to allow any domain). A self-signed-up account starts as **Pending** with no access; a Super Admin assigns it an Area or Store from the Users page (an inline "Assign" control appears on pending rows there) before it can see anything.
 
 **Requires Node.js 22.5 or newer** (uses Node's built-in `node:sqlite` — no
 native compiler/build tools needed to install, unlike most SQLite packages).
@@ -89,7 +98,7 @@ The server listens on your network, not just `localhost`, so anyone on the same 
 1. Run the combined single-port mode above (`npm start` in `server/`, after building the client).
 2. Find your computer's local network address: open a terminal and run `ipconfig` (Windows) or `ifconfig`/`ip addr` (Mac/Linux) — look for the **IPv4 Address** on your active WiFi/Ethernet adapter, e.g. `192.168.1.42`.
 3. On Windows, the first time you start the server you may get a **Windows Defender Firewall** popup asking to allow Node.js — click **Allow access** (at least for Private networks).
-4. Share `http://<that-IP>:4000` with people on the same WiFi — they open it in their own browser and sign in with the shared password.
+4. Share `http://<that-IP>:4000` with people on the same WiFi — they open it in their own browser and either sign in with an account you created for them, or sign up themselves (see "Getting an account" above).
 
 This only works while you're on the same network and your computer + the server process stay running.
 
@@ -100,7 +109,7 @@ Your computer isn't a public web server by default, so the URLs above only work 
 **Option A — a tunnel** (quick, temporary, needs your computer on and running): [Cloudflare Quick Tunnel](https://developers.cloudflare.com/pages/how-to/preview-with-cloudflare-tunnel/) or `npx localtunnel` point a public URL at the combined server above (`cloudflared tunnel --url http://localhost:4000` or `npx localtunnel --port 4000`). **Heads up:** on a locked-down work computer, both may be blocked outright by security software or network policy (a real user hit "Access is denied" running the `cloudflared.exe`, then `npx localtunnel` hung indefinitely trying to connect) — that's the machine's security policy working as intended, not a bug in this app, and isn't something to try to bypass. If that happens, use the same-WiFi option above, or Option B below.
 
 **Option B — real hosting** (always-on, independent of your computer): deploy this app (the combined single-port mode) to a host like Render, Railway, or Fly.io.
-- The server reads `PORT` from the environment automatically (hosting providers set this for you) and `DATA_DIR` to control where the SQLite file is written — point `DATA_DIR` at your host's persistent disk/volume path if it has one.
+- The server reads `PORT` from the environment automatically (hosting providers set this for you) and `DATA_DIR` to control where the SQLite file is written — point `DATA_DIR` at your host's persistent disk/volume path if it has one. Set `SIGNUP_EMAIL_DOMAIN` to restrict self-service sign-up to your company's email domain (default `tobys.com`; leave unset for no restriction).
 - **Free tiers on most hosts do not persist disk storage** — the SQLite file (and everything imported) can be wiped on every redeploy, and often on every restart after a period of inactivity. If you go this route on a free tier, treat any data you import as temporary/at-risk, and consider periodically exporting anything important. A paid tier with a persistent disk (commonly ~$5–7/month on Render) is what actually keeps data safe long-term.
 - Build command: `cd client && npm install && npm run build && cd ../server && npm install`. Start command: `cd server && npm start`.
 
