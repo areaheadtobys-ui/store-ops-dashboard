@@ -107,18 +107,17 @@ export function performImport({ areaId, filename, headers, rows, mapping, entere
   let rowsUpdated = 0;
   const failures = [];
 
-  const findExisting = db.prepare('SELECT id FROM sales_records WHERE store_id = ? AND year = ? AND month = ?');
+  // sales_records is keyed by (store_id, sales_date) now, not (store_id,
+  // year, month) — a store can have several rows in one month from Daily
+  // Entry. Importing a month is authoritative for that store/month: it
+  // deletes whatever's there first (bulk total or daily entries alike) and
+  // writes a single day-1 row, so re-uploading a month never double-counts
+  // against rows entered daily. Documented in the Upload page and README.
+  const countExisting = db.prepare('SELECT COUNT(*) AS c FROM sales_records WHERE store_id = ? AND year = ? AND month = ?');
+  const deleteExisting = db.prepare('DELETE FROM sales_records WHERE store_id = ? AND year = ? AND month = ?');
   const insertSales = db.prepare(`
     INSERT INTO sales_records (store_id, year, month, sales_date, sales_amount, target_amount, drivers_json, import_id, entered_by, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    ON CONFLICT(store_id, year, month) DO UPDATE SET
-      sales_date = excluded.sales_date,
-      sales_amount = excluded.sales_amount,
-      target_amount = excluded.target_amount,
-      drivers_json = excluded.drivers_json,
-      import_id = excluded.import_id,
-      entered_by = excluded.entered_by,
-      updated_at = datetime('now')
   `);
 
   const importRow = db.prepare(`
@@ -172,10 +171,11 @@ export function performImport({ areaId, filename, headers, rows, mapping, entere
         const { store, created } = getOrCreateStore(areaId, storeName);
         if (created) storesCreated += 1;
 
-        const existing = findExisting.get(store.id, year, month);
+        const existingCount = countExisting.get(store.id, year, month).c;
+        if (existingCount > 0) deleteExisting.run(store.id, year, month);
         const salesDate = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-01`;
         insertSales.run(store.id, year, month, salesDate, salesAmount, targetAmount, JSON.stringify(drivers), importId, enteredBy ?? null);
-        if (existing) rowsUpdated += 1;
+        if (existingCount > 0) rowsUpdated += 1;
         else rowsAdded += 1;
       } catch (err) {
         failures.push({ row: index + 2, reason: err.message });
