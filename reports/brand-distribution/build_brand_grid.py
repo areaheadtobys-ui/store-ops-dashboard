@@ -367,7 +367,7 @@ widths(ws, {"A": 34, "B": 22, "C": 30, "D": 60, "E": 22, "F": 4, "G": 16, "H": 1
 # ============================================================================
 ws = S["Store_Master"]
 cols = ["Store Code", "Store Name", "Code Prefix", "Retail Concept", "Concept Override", "Area",
-        "Peer Group", "Brand Data in Source", "Net Sales LY (Jan-Nov)", "Net Sales TY (Jan-Nov)",
+        "Peer Group", "Brand Data in Source", "Net Sales Jan-Nov 2025", "Net Sales Jan-Nov 2026",
         "Store Status (from sales)", "Display Name", "Notes"]
 header(ws, 1, 1, cols, height=32)
 for i, s in enumerate(stores):
@@ -476,7 +476,7 @@ widths(ws, {"A": 22, "B": 12, "C": 22, "D": 12, "E": 36, "F": 18, "G": 12, "H": 
 # Data  (brand-level rows + formula helpers)
 # ============================================================================
 ws = S["Data"]
-cols = ["Store Code", "Source Brand", "Gross Sales LY", "Gross Sales TY", "Net Sales LY", "Net Sales TY",
+cols = ["Store Code", "Source Brand", "Gross Sales Jan-Nov 2025", "Gross Sales Jan-Nov 2026", "Net Sales Jan-Nov 2025", "Net Sales Jan-Nov 2026",
         "Standard Brand", "Key", "Store-Brand Status", "Concept", "Area", "Peer Group"]
 header(ws, 1, 1, cols, height=30)
 ND = 1 + len(br)
@@ -504,13 +504,13 @@ status_cf(ws, f"I2:I{ND}")
 ws.freeze_panes = "C2"
 ws.auto_filter.ref = f"A1:L{ND}"
 widths(ws, {"A": 11, "B": 22, "C": 14, "D": 14, "E": 14, "F": 14, "G": 22, "H": 30, "I": 12, "J": 16, "K": 12, "L": 28})
-ws["I1"].comment = Comment(f"{PRESENT} if any row for this store + standard brand has Net Sales TY > 0; otherwise {UNV} (sold LY only, or zero/negative TY).", "Builder")
+ws["I1"].comment = Comment(f"{PRESENT} if any row for this store + standard brand has Net Sales Jan-Nov 2026 > 0; otherwise {UNV} (sold LY only, or zero/negative TY).", "Builder")
 
 # ============================================================================
 # Master_Grid
 # ============================================================================
 ws = S["Master_Grid"]
-ws["A1"] = "QII Store × Brand Master Grid"
+ws["A1"] = "QII Store × Brand Master Grid  |  Period: January - November 2026"
 ws["A1"].font = fnt(size=16, bold=True, color=NAVY)
 ws["A2"] = (f"{PRESENT} = carried (net sales > 0, Jan-Nov 2026)   {ABSENT} = no sales record LY or TY in a store with full brand data   "
             f"{UNV} = not confirmed (sold LY only / zero or negative TY / store has no brand-level data)   {NA} = out of scope (Overrides sheet)")
@@ -572,9 +572,9 @@ widths(ws, {"A": 10, "B": 16, "C": 15, "D": 11, "E": 7, "F": 7.5, "G": 9})
 ws = S["Dashboard"]
 ws.sheet_view.showGridLines = False
 widths(ws, {"A": 2, "B": 24, "C": 18, "D": 14, "E": 12, "F": 12, "G": 3, "H": 24, "I": 18, "J": 14, "K": 12, "L": 12, "M": 3, "N": 24, "O": 14, "P": 14, "Q": 14})
-ws["B2"] = "QII Store × Brand Distribution Dashboard"
+ws["B2"] = "QII Store × Brand Distribution Dashboard  |  January - November 2026"
 ws["B2"].font = fnt(size=18, bold=True, color=NAVY)
-ws["B3"] = f"Source: {SRC_NAME}  |  TY = Jan-Nov 2026, LY = Jan-Nov 2025  |  Presence = positive net sales TY. Change the yellow filters; everything below recalculates."
+ws["B3"] = f"Period: January - November 2026 (TY) vs January - November 2025 (LY)  |  Source: {SRC_NAME}  |  Presence = positive net sales Jan - Nov 2026. Change the yellow filters; everything below recalculates."
 ws["B3"].font = fnt(size=9, italic=True, color="595959")
 for i, (lbl, src) in enumerate([("Retail Concept", "=Settings!$K$5:$K$9"), ("Area", "=Settings!$L$5:$L$9"),
                                  ("Brand Category", "=Settings!$N$5:$N$35")]):
@@ -722,7 +722,7 @@ for r in range(BR0 + 3, BR0 + 18):
 ws.conditional_formatting.add(f"E{BR0 + 3}:E{BR0 + 17}", ColorScaleRule(start_type="num", start_value=0, start_color="FFFFFF", end_type="num", end_value=1, end_color="63BE7B"))
 
 ws.cell(row=BR0 + 1, column=8, value="Limited distribution, strongest sales per store").font = fnt(bold=True)
-header(ws, BR0 + 2, 8, ["Brand", "Stores ✓", "Net Sales TY", "Sales / carrying store", "Tier"], height=30)
+header(ws, BR0 + 2, 8, ["Brand", "Stores ✓", "Net Sales Jan-Nov 2026", "Sales / carrying store", "Tier"], height=30)
 for k in range(1, 16):
     r = BR0 + 2 + k
     key = f"LARGE({BSR('Q')},{k})"
@@ -733,7 +733,7 @@ body_fmt(ws, BR0 + 3, BR0 + 17, 8, 12, size=9)
 for r in range(BR0 + 3, BR0 + 18):
     ws.cell(row=r, column=10).number_format = "#,##0"
     ws.cell(row=r, column=11).number_format = "#,##0"
-ws.cell(row=BR0 + 18, column=8, value="=\"Brands carried in 1 to \"&" + TH_CELL["limited_n"] + "&\" stores in view, ranked by net sales TY per carrying store - candidates to review for wider distribution.\"").font = fnt(size=8, italic=True, color="808080")
+ws.cell(row=BR0 + 18, column=8, value="=\"Brands carried in 1 to \"&" + TH_CELL["limited_n"] + "&\" stores in view, ranked by net sales Jan-Nov 2026 per carrying store - candidates to review for wider distribution.\"").font = fnt(size=8, italic=True, color="808080")
 
 ws.cell(row=BR0 + 1, column=14, value="Brands by distribution tier").font = fnt(bold=True)
 header(ws, BR0 + 2, 14, ["Tier", "Brands", "Rule"])
@@ -814,7 +814,7 @@ ws.freeze_panes = "A8"
 # ============================================================================
 ws = S["Store_Summary"]
 cols = ["Store Code", "Store Name", "Concept", "Area", "Peer Group", "Brand Data", "Brands ✓", "Unverified",
-        "Peer avg brands", "Assortment index", "Rank in peer group", "Peer stores", "Net Sales TY",
+        "Peer avg brands", "Assortment index", "Rank in peer group", "Peer stores", "Net Sales Jan-Nov 2026",
         "Store Status", "Assortment flag", "In dashboard filter", "Top score (helper)", "Bottom score (helper)"]
 header(ws, 1, 1, cols, height=32)
 for i in range(NS):
@@ -857,7 +857,7 @@ widths(ws, {"A": 10, "B": 18, "C": 15, "D": 11, "E": 27, "F": 8, "G": 8, "H": 9,
 ws = S["Brand_Summary"]
 cols = ["Brand", "Category", "Grid col #", "Stores ✓ (all)", "Applicable stores (all)", "% of applicable (all)",
         "Stores ✓ (in view)", "Applicable stores (in view)", "% of applicable (in view)", "Unverified (in view)",
-        "Distribution tier (in view)", "Net Sales TY (in view)", "Net Sales LY (in view)", "Sales / carrying store",
+        "Distribution tier (in view)", "Net Sales Jan-Nov 2026 (in view)", "Net Sales Jan-Nov 2025 (in view)", "Sales / carrying store",
         "In category filter", "Top score (helper)", "Limited score (helper)"]
 header(ws, 1, 1, cols, height=42)
 for j in range(NB):
@@ -902,7 +902,7 @@ widths(ws, {"A": 22, "B": 16, "C": 7, "D": 9, "E": 10, "F": 10, "G": 9, "H": 10,
 # Heatmap
 # ============================================================================
 ws = S["Heatmap"]
-title(ws, "Brand Distribution Heatmap",
+title(ws, "Brand Distribution Heatmap  |  Jan - Nov 2026",
       "% of applicable stores (with brand-level data) that carry each brand, by concept, peer group and area. Blank = no stores with brand data in that group.")
 ws["A3"] = "Read across a row to spot brands that are strong in one group but thin in another (column L)."
 ws["A3"].font = fnt(size=9, italic=True)
@@ -949,7 +949,7 @@ widths(ws, {"A": 22, "B": 15, "C": 10, "D": 10, "E": 10, "F": 11, "G": 14, "H": 
 # ============================================================================
 ws = S["Store_View"]
 ws.sheet_view.showGridLines = False
-title(ws, "Store View - which brands does this store carry?", "Pick a store code in the yellow cell.")
+title(ws, "Store View - which brands does this store carry?", "Period: January - November 2026 (vs Jan - Nov 2025). Pick a store code in the yellow cell.")
 ws["A4"] = "Store Code"
 ws["A4"].font = fnt(bold=True)
 ws["B4"] = stores[0] if stores[0] in detail else sorted(detail)[0]
@@ -962,7 +962,7 @@ dv.add("B4")
 ws.add_data_validation(dv)
 info = [("Store Name", "B"), ("Concept", "C"), ("Area", "D"), ("Peer Group", "E"), ("Brand data in source", "F"),
         ("Brands ✓", "G"), ("Unverified", "H"), ("Peer avg brands", "I"), ("Assortment index", "J"),
-        ("Rank in peer group", "K"), ("Net Sales TY", "M"), ("Store status", "N"), ("Assortment flag", "O")]
+        ("Rank in peer group", "K"), ("Net Sales Jan-Nov 2026", "M"), ("Store status", "N"), ("Assortment flag", "O")]
 ws["D3"] = "Store profile"
 ws["D3"].font = fnt(bold=True, color=TEAL)
 SV_ROW = f"MATCH($B$4,{SS('A')},0)"
@@ -980,7 +980,7 @@ GROW = f"MATCH($B$4,{G_CODE},0)"
 peer_cell = "$E$5" if False else f'IFERROR(INDEX({SS("E")},{SV_ROW}),"")'
 ws["T12"] = "Helper columns (do not edit)"
 ws["T12"].font = fnt(size=8, italic=True, color="A6A6A6")
-header(ws, LIST0, 20, ["Brand", "Status", "Net Sales TY", "Net Sales LY", "Peer penetration", "Carried score", "Gap score", "Unverified score"], fill="808080")
+header(ws, LIST0, 20, ["Brand", "Status", "Net Sales Jan-Nov 2026", "Net Sales Jan-Nov 2025", "Peer penetration", "Carried score", "Gap score", "Unverified score"], fill="808080")
 for j in range(NB):
     r = H1 + j
     ws.cell(row=r, column=20, value=f"=Brand_Master!A{2 + j}")
@@ -998,12 +998,12 @@ for c in range(20, 28):
     ws.column_dimensions[CL(c)].width = 11
 HR = f"$T${H1}:$T${H1 + NB - 1}"
 HC = lambda c: f"${c}${H1}:${c}${H1 + NB - 1}"
-section(ws, f"A{LIST0 - 1}", "Brands carried (✓) - by net sales TY")
+section(ws, f"A{LIST0 - 1}", "Brands carried (✓) - by net sales Jan-Nov 2026")
 section(ws, f"F{LIST0 - 1}", "Not carried - most common in peer group first")
-section(ws, f"K{LIST0 - 1}", "Unverified - by LY sales")
-header(ws, LIST0, 1, ["#", "Brand", "Net Sales TY", "Net Sales LY"])
+section(ws, f"K{LIST0 - 1}", "Unverified - by Jan-Nov 2025 sales")
+header(ws, LIST0, 1, ["#", "Brand", "Net Sales Jan-Nov 2026", "Net Sales Jan-Nov 2025"])
 header(ws, LIST0, 6, ["#", "Brand", "Peer penetration", "Peer stores ✓"])
-header(ws, LIST0, 11, ["#", "Brand", "Net Sales LY", "Net Sales TY"])
+header(ws, LIST0, 11, ["#", "Brand", "Net Sales Jan-Nov 2025", "Net Sales Jan-Nov 2026"])
 NLIST = 200
 for k in range(1, NLIST + 1):
     r = LIST0 + k
@@ -1044,7 +1044,7 @@ ws.freeze_panes = f"A{LIST0 + 1}"
 # ============================================================================
 ws = S["Brand_View"]
 ws.sheet_view.showGridLines = False
-title(ws, "Brand View - which stores carry this brand?", "Pick a brand in the yellow cell.")
+title(ws, "Brand View - which stores carry this brand?", "Period: January - November 2026 (vs Jan - Nov 2025). Pick a brand in the yellow cell.")
 ws["A4"] = "Brand"
 ws["A4"].font = fnt(bold=True)
 ws["B4"] = "NIKE"
@@ -1063,8 +1063,8 @@ for i, (lbl, f, nf) in enumerate([
         ("Stores ✓", f'=IFERROR(INDEX({BSR("D")},{BV_ROW}),"")', "0"),
         ("Applicable stores", f'=IFERROR(INDEX({BSR("E")},{BV_ROW}),"")', "0"),
         ("% of applicable", f'=IFERROR(INDEX({BSR("F")},{BV_ROW}),"")', "0%"),
-        ("Net Sales TY (all)", f'=SUMIFS({D("F")},{D("G")},$B$4)', "#,##0"),
-        ("Net Sales LY (all)", f'=SUMIFS({D("E")},{D("G")},$B$4)', "#,##0")]):
+        ("Net Sales Jan-Nov 2026 (all)", f'=SUMIFS({D("F")},{D("G")},$B$4)', "#,##0"),
+        ("Net Sales Jan-Nov 2025 (all)", f'=SUMIFS({D("E")},{D("G")},$B$4)', "#,##0")]):
     ws.cell(row=4 + i, column=4, value=lbl).font = fnt(size=9, color="595959")
     c = ws.cell(row=4 + i, column=5, value=f)
     c.font = fnt(bold=True)
@@ -1083,7 +1083,7 @@ ws["I9"] = f'=IFERROR(INDEX(Heatmap!$L$6:$L${5 + NB},{HMROW}),"")'
 ws["I9"].font = fnt(size=9, bold=True)
 BL0 = 13
 BH1 = BL0 + 1
-header(ws, BL0, 20, ["Store", "Status", "Brand Net Sales TY", "Peer Group", "Peer penetration", "Store brands ✓", "Carried score", "Gap score", "Unverified score"], fill="808080")
+header(ws, BL0, 20, ["Store", "Status", "Brand Net Sales Jan-Nov 2026", "Peer Group", "Peer penetration", "Store brands ✓", "Carried score", "Gap score", "Unverified score"], fill="808080")
 ws["T12"] = "Helper columns (do not edit)"
 ws["T12"].font = fnt(size=8, italic=True, color="A6A6A6")
 BCOL = f"MATCH($B$4,{GHDR},0)"
@@ -1107,7 +1107,7 @@ BHR = lambda c: f"${c}${BH1}:${c}${BH1 + NS - 1}"
 section(ws, f"A{BL0 - 1}", "Stores carrying (✓) - by brand net sales TY")
 section(ws, f"F{BL0 - 1}", "Stores not carrying (—) - peer adoption first")
 section(ws, f"K{BL0 - 1}", "Stores unverified")
-header(ws, BL0, 1, ["#", "Store", "Store Name", "Net Sales TY"])
+header(ws, BL0, 1, ["#", "Store", "Store Name", "Net Sales Jan-Nov 2026"])
 header(ws, BL0, 6, ["#", "Store", "Peer Group", "Peer penetration"])
 header(ws, BL0, 11, ["#", "Store", "Peer Group"])
 for k in range(1, NS + 1):
@@ -1142,7 +1142,7 @@ ws.freeze_panes = f"A{BL0 + 1}"
 # Opportunities  (candidate list generated from the snapshot, metrics live)
 # ============================================================================
 ws = S["Opportunities"]
-title(ws, "Distribution Opportunity Report - for review",
+title(ws, "Distribution Opportunity Report - for review  |  Jan - Nov 2026",
       "Potential gaps for Merchandising review - NOT automatic recommendations. Consider store format, selling space, brand agreements and strategy before acting.")
 ws["A3"] = (f"Rule: store has brand-level data, is active, shows '{ABSENT}' for a brand that ≥{int(TH['opp_pen'] * 100)}% (and ≥{TH['opp_min_carry']}) of its peer-group stores carry. "
             "Peer groups compare like with like (e.g. Toby's 1011 vs 2011 series are separate). Metrics in this list are live formulas; "
@@ -1230,7 +1230,7 @@ widths(ws, {"A": 5, "B": 10, "C": 16, "D": 26, "E": 20, "F": 10, "G": 9, "H": 13
 # Validation report
 # ============================================================================
 ws = S["Validation"]
-title(ws, "Data Validation Report", f"Findings from reviewing {SRC_NAME} (single sheet, {len(body)} data rows). Live counts update; listed records are a build-time snapshot.")
+title(ws, "Data Validation Report  |  Jan - Nov 2026", f"Findings from reviewing {SRC_NAME} (single sheet, {len(body)} data rows). Live counts update; listed records are a build-time snapshot.")
 widths(ws, {"A": 5, "B": 14, "C": 26, "D": 18, "E": 18, "F": 60})
 section(ws, "A4", "1. Summary of open items (live)")
 header(ws, 5, 1, ["#", "Item", "", "Count", "Severity", "Action"])
@@ -1286,12 +1286,12 @@ def table(r, heading, cols, rows, numcols=(), note=None):
 
 nod = [s for s in stores if s not in detail]  # includes stores with brand rows but no positive TY sales
 r = table(r, "2. Stores not evaluated - no brand-level breakdown, or no positive TY brand sales",
-          ["#", "Store Code", "Peer Group", "Net Sales LY", "Net Sales TY", "Issue"],
+          ["#", "Store Code", "Peer Group", "Net Sales Jan-Nov 2025", "Net Sales Jan-Nov 2026", "Issue"],
           [(i + 1, s, peer(s), *store_ly_ty(s), ("Only a store total row exists" if s not in detail_any else "Brand rows exist but none has positive TY sales") + "; every brand shows UNVERIFIED. " + store_status(s))
            for i, s in enumerate(nod)], numcols=(4, 5))
 anom = [s for s in stores if store_status(s) != "Active"]
 r = table(r, "3. Store status anomalies (derived from sales)",
-          ["#", "Store Code", "Peer Group", "Net Sales LY", "Net Sales TY", "Observation"],
+          ["#", "Store Code", "Peer Group", "Net Sales Jan-Nov 2025", "Net Sales Jan-Nov 2026", "Observation"],
           [(i + 1, s, peer(s), *store_ly_ty(s), store_status(s)) for i, s in enumerate(anom)], numcols=(4, 5))
 r = table(r, "4. Brand names - consolidated and possible duplicates",
           ["#", "Brand A", "Brand B", "Action", "", "Note"],
@@ -1306,18 +1306,18 @@ for (s, b), g in br.groupby(["Store", "Std"]):
         unv_rows.append((s, b, ly, ty, why))
 unv_rows.sort(key=lambda x: (-x[2], x[0]))
 r = table(r, f"5. Store-brand pairs marked UNVERIFIED ({len(unv_rows)}) - record exists but no positive sales TY",
-          ["#", "Store Code", "Brand", "Net Sales LY", "Net Sales TY", "Reason"],
+          ["#", "Store Code", "Brand", "Net Sales Jan-Nov 2025", "Net Sales Jan-Nov 2026", "Reason"],
           [(i + 1, *x) for i, x in enumerate(unv_rows)], numcols=(4, 5),
-          note="Sorted by LY sales. Confirm in Overrides whether each brand is still listed in the store.")
+          note="Sorted by Jan-Nov 2025 sales. Confirm in Overrides whether each brand is still listed in the store.")
 neg = br[br["NSALES TY"] < 0].sort_values("NSALES TY")
 r = table(r, f"6. Rows with negative net sales TY ({len(neg)})",
-          ["#", "Store Code", "Source Brand", "Net Sales LY", "Net Sales TY", "Note"],
+          ["#", "Store Code", "Source Brand", "Net Sales Jan-Nov 2025", "Net Sales Jan-Nov 2026", "Note"],
           [(i + 1, x["Store"], x["Brand"], x["NSALES LY"], x["NSALES TY"], "Returns exceed sales - check for data or returns issues")
            for i, (_, x) in enumerate(neg.iterrows())], numcols=(4, 5))
 r = table(r, "7. Source structure notes", ["#", "Topic", "", "", "", "Detail"], [
     (1, "Missing master data", "", "", "", "The source has store codes only. Store names, area, concept, store format and brand categories are not present and are left as inputs."),
     (2, "Store total rows", "", "", "", "Store totals are labelled 'Total' for some stores and blank for others; both treated as store totals."),
-    (3, "Period", "", "", "", "TY = Jan-Nov 2026, LY = Jan-Nov 2025 per the file name. November may be partial."),
+    (3, "Period", "", "", "", "Reporting period CONFIRMED by user: January to November 2026 (TY). LY = January to November 2025, same period prior year, as provided in the source."),
     (4, "Presence definition", "", "", "", f"Presence ({PRESENT}) is inferred from positive net sales TY - a proxy for 'carried'. A listed brand with no sales would appear as {UNV} or {ABSENT}; record confirmed listings in Overrides."),
     (5, "Absence definition", "", "", "", f"'{ABSENT}' is only used where the store has full brand-level data and no row at all for the brand (no sales LY or TY)."),
 ])
@@ -1330,9 +1330,11 @@ ws.sheet_view.showGridLines = False
 widths(ws, {"A": 3, "B": 26, "C": 110})
 ws["B2"] = "QII Store × Brand Grid Matrix"
 ws["B2"].font = fnt(size=20, bold=True, color=NAVY)
-ws["B3"] = f"Toby's Sports · Runnr · Urban Athletics  |  Built from {SRC_NAME}  |  {NS} stores × {NB} brands"
+ws["B3"] = f"Toby's Sports · Runnr · Urban Athletics  |  Period: January - November 2026  |  Built from {SRC_NAME}  |  {NS} stores × {NB} brands"
 ws["B3"].font = fnt(size=10, italic=True, color="595959")
 rows = [
+    ("REPORTING PERIOD", None),
+    ("Period", "January - November 2026 (TY), compared with January - November 2025 (LY). All ✓ statuses and sales figures refer to this period."),
     ("STATUS LEGEND", None),
     (PRESENT, "Brand present - positive net sales in Jan-Nov 2026 (green)."),
     (ABSENT, "Brand not present - store has full brand-level data and no sales record for the brand in either year (light gray)."),
